@@ -161,7 +161,7 @@ class SkillVerifier:
             self.log_failure("Directory Layout", f"Skill root directory does not exist: {self.root}")
             return
 
-        allowed_root_md = {"SKILL.md"}
+        allowed_root_md = {"SKILL.md", "README.md"}
         root_md = {p.name for p in self.root.glob("*.md")}
         disallowed = root_md - allowed_root_md
         if disallowed:
