@@ -9,7 +9,7 @@ experiments across 6 test suites (PB-1 through PB-6) against an OpenAI-compatibl
 chat completions endpoint configured solely via environment variables:
   - GATEWAY_URL
   - API_KEY
-  - TARGET_MODEL (default: cx/gpt-6-luna)
+  - TARGET_MODEL (provenance traces ran on GPT 6 Luna)
 
 Provenance script: writes raw records (excluding auth headers and gateway URLs)
 to evidence/raw_phase_b/results_<SUITE>.jsonl.
@@ -34,7 +34,7 @@ import urllib.error
 import urllib.request
 
 
-DEFAULT_MODEL = os.environ.get("TARGET_MODEL", "cx/gpt-6-luna")
+DEFAULT_MODEL = os.environ.get("TARGET_MODEL", "")
 DEFAULT_ITERATIONS = 5
 DEFAULT_CONCURRENCY = 8
 

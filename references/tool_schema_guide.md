@@ -1,7 +1,7 @@
 # Engineering Guide: Tool Schemas & Function Calling
 
 ## Overview
-This guide documents rules for designing tool and function schemas (JSON Schema, OpenAI Structured Outputs, Anthropic Tool Use, and Gemini Function Calling), tagged by evidence tier (`T1` Verified Fact, `T2` Measured on `cx/gpt-6-luna`, `T3` Current Vendor Guidance, `T4` Mechanism, `T5` Learned Behavior).
+This guide documents rules for designing tool and function schemas (JSON Schema, OpenAI Structured Outputs, Anthropic Tool Use, and Gemini Function Calling), tagged by evidence tier (`T1` Verified Fact, `T2` Measured on `GPT 6 Luna`, `T3` Current Vendor Guidance, `T4` Mechanism, `T5` Learned Behavior).
 
 ---
 
@@ -48,26 +48,26 @@ This guide documents rules for designing tool and function schemas (JSON Schema,
 ---
 
 ### R-TOOL-04: Description Neutrality & Anti-Gaming Hygiene
-- **Evidence Tier**: **T2 (Measured on `cx/gpt-6-luna`, `PB-2`)** + **T5** (`Faghih et al.`)
+- **Evidence Tier**: **T2 (Measured on `GPT 6 Luna`, `PB-2`)** + **T5** (`Faghih et al.`)
 - **Primary Citations**:
   - `PB-2` in [stats_recomputed.md](../evidence/stats_recomputed.md) (`evidence/raw_phase_b/results_PB-2.jsonl`).
   - Faghih, Wang, Cheng, Bharti, Sriramanan, Balasubramanian, Hosseini, & Feizi (May 2025 / EMNLP 2025), *Tool Preferences in Agentic LLMs are Unreliable*, [arXiv:2505.18135](https://arxiv.org/abs/2505.18135).
-- **Models Tested**: `cx/gpt-6-luna (xhigh)` (`PB-2`, `N = 5` runs/prompt); `17` models including `GPT-4.1` and `Qwen2.5-7B` (Faghih et al.).
+- **Models Tested**: `GPT 6 Luna (xhigh)` (`PB-2`, `N = 5` runs/prompt); `17` models including `GPT-4.1` and `Qwen2.5-7B` (Faghih et al.).
 - **Verified `T2` Finding (`PB-2`, deconfounded symmetric tools)**:
-  In `PB-2` (`records_provider_alpha` vs `records_provider_beta`, identical neutral baselines), `beta` was chosen **`0/30` (`0.0%`)** at baseline (`neutral_ab`) and **`0/30` (`0.0%`, `p = 1.0000`)** when only a neutral usage example was appended (`example_on_beta`). Adding assertive promotional superlatives (`"Primary and preferred tool; actively maintained and optimized; invoke whenever possible."`) flipped selection to **`30/30` (`100.0%`, Fisher `p = 1.691e-17`)**, confirming on `cx/gpt-6-luna` the >`10x` gaming vulnerability reported across `17` LLMs by Faghih et al.
+  In `PB-2` (`records_provider_alpha` vs `records_provider_beta`, identical neutral baselines), `beta` was chosen **`0/30` (`0.0%`)** at baseline (`neutral_ab`) and **`0/30` (`0.0%`, `p = 1.0000`)** when only a neutral usage example was appended (`example_on_beta`). Adding assertive promotional superlatives (`"Primary and preferred tool; actively maintained and optimized; invoke whenever possible."`) flipped selection to **`30/30` (`100.0%`, Fisher `p = 1.691e-17`)**, confirming on `GPT 6 Luna` the >`10x` gaming vulnerability reported across `17` LLMs by Faghih et al.
 - **Schema Directive**:
   - Keep tool descriptions objective and strictly neutral; omit promotional superlatives (`"best"`, `"preferred"`, `"invoke whenever possible"`). Usage examples alone did not bias selection in `PB-2`.
 
 ---
 
 ### R-TOOL-05: Parameter Descriptions for Non-Universal Formats & Conventions
-- **Evidence Tier**: **T2 (Measured on `cx/gpt-6-luna`, narrowed)** + **T5** (`ToolSandbox`)
+- **Evidence Tier**: **T2 (Measured on `GPT 6 Luna`, narrowed)** + **T5** (`ToolSandbox`)
 - **Primary Citations**:
   - `TS-2` in [stats_recomputed.md](../evidence/stats_recomputed.md) (`evidence/raw/results_TS-2.jsonl`).
   - Lu et al. (ToolSandbox, NAACL 2025 Findings), [arXiv:2408.04682](https://arxiv.org/abs/2408.04682).
-- **Models Tested**: `cx/gpt-6-luna (xhigh)` (`TS-2`); `GPT-4`, `GPT-4o`, `Claude-3-Sonnet`, `Gemini-1.5` (ToolSandbox).
+- **Models Tested**: `GPT 6 Luna (xhigh)` (`TS-2`); `GPT-4`, `GPT-4o`, `Claude-3-Sonnet`, `Gemini-1.5` (ToolSandbox).
 - **Verified `T2` Finding (`TS-2`)**:
-  When parameter format descriptions were omitted on `cx/gpt-6-luna (xhigh)`, universally standardized formats were usually inferred (`timestamp_valid` ISO 8601 UTC: `15/15`; `currency_valid` ISO 4217: `12/15` vs `15/15`, Fisher `p = 0.2241`), whereas an unstated non-universal spacing convention (`geo_coordinates` requiring `"lat,lon"` without spaces instead of `"lat, lon"`) failed **`0/15` vs `15/15`** (Fisher `p = 1.289e-08`; `all_fields_valid` `p = 1.289e-08`). Descriptive schemas also lowered mean reasoning tokens from `39.1` to `21.1` (`t = -4.95`, `p = 0.0002`, 1 run/prompt).
+  When parameter format descriptions were omitted on `GPT 6 Luna (xhigh)`, universally standardized formats were usually inferred (`timestamp_valid` ISO 8601 UTC: `15/15`; `currency_valid` ISO 4217: `12/15` vs `15/15`, Fisher `p = 0.2241`), whereas an unstated non-universal spacing convention (`geo_coordinates` requiring `"lat,lon"` without spaces instead of `"lat, lon"`) failed **`0/15` vs `15/15`** (Fisher `p = 1.289e-08`; `all_fields_valid` `p = 1.289e-08`). Descriptive schemas also lowered mean reasoning tokens from `39.1` to `21.1` (`t = -4.95`, `p = 0.0002`, 1 run/prompt).
 - **Schema Directive**:
   - Supply an explicit `description` for every parameter, prioritizing exact syntax examples, spacing rules, units, timezones, and bounds for any convention not universally standardized.
 
@@ -129,12 +129,12 @@ This guide documents rules for designing tool and function schemas (JSON Schema,
 ---
 
 ### R-TOOL-11: In-Schema `rationale` Field When Pre-Emission Thinking Is Absent
-- **Evidence Tier**: **T2 (Measured on `cx/gpt-6-luna`, `PB-6`)** + **T4 (Mechanism: autoregressive left-to-right constrained decoding)**
+- **Evidence Tier**: **T2 (Measured on `GPT 6 Luna`, `PB-6`)** + **T4 (Mechanism: autoregressive left-to-right constrained decoding)**
 - **Primary Citations**:
   - `PB-6` (`reasoning_effort = "none"`) & `TS-3` (`xhigh`) in [stats_recomputed.md](../evidence/stats_recomputed.md).
   - Tam, Wu, Tsai, Lin, Lee, & Chen (Aug 2024 / EMNLP 2024), *Let Me Speak Freely?*, [arXiv:2408.02442](https://arxiv.org/abs/2408.02442).
   - Nguyen et al. (Jan 2026), *Thinking Before Constraining*, [arXiv:2601.07525](https://arxiv.org/abs/2601.07525) & Anthropic `define-tools`.
-- **Models Tested**: `cx/gpt-6-luna` (`PB-6` `none` & `TS-3` `xhigh`); non-reasoning LLMs (Tam et al., Nguyen et al.).
+- **Models Tested**: `GPT 6 Luna` (`PB-6` `none` & `TS-3` `xhigh`); non-reasoning LLMs (Tam et al., Nguyen et al.).
 - **Verified `T2` & `T4` Result (`PB-6`, `N = 5` runs/prompt, `reasoning_tokens = 0`)**:
   When `reasoning_effort = "none"` (`0` reasoning tokens across all 90 runs, simulating non-reasoning constrained JSON decoding), multi-step scheduling/arithmetic accuracy scored **`11/30` (`36.7%`)** for `no_rationale` and an identical **`11/30` (`36.7%`)** when `rationale` followed the action parameters (`rationale_last`). Placing `rationale` **first** (`rationale_first`) raised accuracy to **`30/30` (`100.0%`)** (paired `t = 3.12, p = 0.0261`; Fisher exact **`p = 5.343e-08`** vs both `no_rationale` and `rationale_last`). By contrast, under `xhigh` pre-emission reasoning (`TS-3`), all orderings scored `15/15` (`100%`).
 - **T3 Anthropic Refusal Caveat**:

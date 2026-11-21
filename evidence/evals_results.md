@@ -1,6 +1,6 @@
 # Evaluation Suite Results (`evals/evals.json`)
 
-- **Target Model**: `cx/gpt-6-luna` (run `20261121_170603_evals`, `0` errors across `80` calls)
+- **Target Model**: `GPT 6 Luna` (run `20261121_170603_evals`, `0` errors across `80` calls)
 - **Iterations**: `N = 5` runs per prompt (`reasoning_effort="low"` for triggering; `"medium"` for comparative authoring)
 - **Raw Traces**: `evidence/raw_evals/results_evals.jsonl` (`80` records)
 

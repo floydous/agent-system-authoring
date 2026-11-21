@@ -6,7 +6,7 @@
 # ///
 """
 Milestone 1 Empirical Experimentation Harness
-Target Model: cx/gpt-6-luna (thinking level: xhigh)
+Target Model: GPT 6 Luna (thinking level: xhigh)
 Gateway: Configured via GATEWAY_URL environment variable or --gateway-url flag
 
 Executes isolated-variable empirical experiments for System Prompt (SP-1..SP-4)
@@ -44,7 +44,7 @@ import httpx
 
 DEFAULT_GATEWAY_URL = os.environ.get("GATEWAY_URL", "")
 DEFAULT_API_KEY = os.environ.get("API_KEY", "")
-DEFAULT_MODEL = os.environ.get("TARGET_MODEL", "cx/gpt-6-luna")
+DEFAULT_MODEL = os.environ.get("TARGET_MODEL", "")
 DEFAULT_REASONING_EFFORT = os.environ.get("REASONING_EFFORT", "xhigh")
 DEFAULT_TIMEOUT_SECONDS = 120.0
 DEFAULT_MAX_RETRIES = 4
@@ -78,9 +78,9 @@ class HarnessConfig:
         if self.iterations < 1:
             raise ValueError(f"iterations must be greater than 0, got {self.iterations}")
 
-        # Enforce canonical model ID cx/gpt-6-luna
-        if self.model == "gpt-6-luna":
-            self.model = "cx/gpt-6-luna"
+        # Require explicit target model identifier for live runs
+        if not self.mock and not self.model:
+            raise ValueError("TARGET_MODEL must be provided via environment variable or --model.")
 
         # Check credentials for non-mock runs
         if not self.mock and (not self.gateway_url or not self.api_key):
@@ -1919,7 +1919,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--model",
         type=str,
         default=DEFAULT_MODEL,
-        help="Target model identifier (must be cx/gpt-6-luna).",
+        help="Target model identifier (configured via TARGET_MODEL env var or --model; provenance traces ran on GPT 6 Luna).",
     )
     parser.add_argument(
         "--gateway-url",

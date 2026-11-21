@@ -3,7 +3,7 @@
   "version": "1.1.0",
   "status": "executed_on_gpt_6_luna",
   "results_report": "evidence/evals_results.md",
-  "description": "Dual-axis trigger and comparative authoring evaluation suite executed across N = 5 iterations on cx/gpt-6-luna (50 trigger calls + 30 comparative calls, 0 errors).",
+  "description": "Dual-axis trigger and comparative authoring evaluation suite executed across N = 5 iterations on GPT 6 Luna (50 trigger calls + 30 comparative calls, 0 errors).",
   "evals": [
     {
       "id": "trigger_pos_01_customer_support",

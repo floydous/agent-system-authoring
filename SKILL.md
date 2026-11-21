@@ -10,7 +10,7 @@ metadata:
 # Agent System Authoring: Evidence-Grounded Prompt, Schema & Skill Engineering
 
 ## Overview
-This skill guides agents and engineers in authoring system instructions, tool/function schemas, and portable Agent Skills. Every item below is explicitly tagged by its verification basis (`T1` Verified Fact, `T2` Measured on `cx/gpt-6-luna`, `T3` Current Vendor Guidance — *not measured by us*, `T4` Mechanism, `T5` Learned Behavior, `Methodology`, `Project convention`, or `Contested`). T5 rules were measured on earlier models; transfer to current models (`Gemini 4 Hydrogen`, `Claude Fable 5.2`, `Claude Opus 5.5`, `GPT 6.2 Astra`) is plausible but not re-measured. Contested and unsupported items: see [references/unverified_hypotheses.md](references/unverified_hypotheses.md).
+This skill guides agents and engineers in authoring system instructions, tool/function schemas, and portable Agent Skills. Every item below is explicitly tagged by its verification basis (`T1` Verified Fact, `T2` Measured on `GPT 6 Luna`, `T3` Current Vendor Guidance — *not measured by us*, `T4` Mechanism, `T5` Learned Behavior, `Methodology`, `Project convention`, or `Contested`). T5 rules were measured on earlier models; transfer to current models (`Gemini 4 Hydrogen`, `Claude Fable 5.2`, `Claude Opus 5.5`, `GPT 6.2 Astra`) is plausible but not re-measured. Contested and unsupported items: see [references/unverified_hypotheses.md](references/unverified_hypotheses.md).
 
 ---
 
@@ -56,7 +56,7 @@ This skill guides agents and engineers in authoring system instructions, tool/fu
    python scripts/verify_skill.py .
    python evidence/recompute_stats.py
    ```
-3. Run evaluations (`evals/evals.json`) across `N >= 5` iterations per prompt, reporting dispersion and exact/paired tests to account for GPU/batching non-determinism ([R-SYS-10](references/system_instructions_guide.md), **Methodology**). On `cx/gpt-6-luna` (`80` calls, `N = 5`), triggering scored Precision `1.0` / Recall `1.0` / F1 `1.0` and comparative rubric quality improved from `0.533` to `0.851` (`+0.318`, `p = 2.804e-06`; see [evidence/evals_results.md](evidence/evals_results.md)).
+3. Run evaluations (`evals/evals.json`) across `N >= 5` iterations per prompt, reporting dispersion and exact/paired tests to account for GPU/batching non-determinism ([R-SYS-10](references/system_instructions_guide.md), **Methodology**). On `GPT 6 Luna` (`80` calls, `N = 5`), triggering scored Precision `1.0` / Recall `1.0` / F1 `1.0` and comparative rubric quality improved from `0.533` to `0.851` (`+0.318`, `p = 2.804e-06`; see [evidence/evals_results.md](evidence/evals_results.md)).
 
 ---
 
@@ -70,10 +70,10 @@ This skill guides agents and engineers in authoring system instructions, tool/fu
 | [references/evidence_ledger.md](references/evidence_ledger.md) | Master ledger indexing all 28 rule IDs to tiers, models tested, and verified quotes. |
 | [references/debunked_folklore.md](references/debunked_folklore.md) | Verified refutations and conditionally bounded comparisons across Phase A & Phase B. |
 | [references/unverified_hypotheses.md](references/unverified_hypotheses.md) | Unsupported numbers removed from rules, inconclusive contrasts, and open hypotheses. |
-| [references/empirical_results.md](references/empirical_results.md) | Recomputed Phase A (228 runs) and Phase B (480 runs, N=5/prompt) analysis on `cx/gpt-6-luna`. |
+| [references/empirical_results.md](references/empirical_results.md) | Recomputed Phase A (228 runs) and Phase B (480 runs, N=5/prompt) analysis on `GPT 6 Luna`. |
 | [evidence/README.md](evidence/README.md) | Provenance index, raw JSONL traces, `recompute_stats.py`, and source verification log. |
 | [assets/templates/system_prompt_template.md](assets/templates/system_prompt_template.md) | Flat Markdown-header system prompt starter template. |
 | [assets/templates/tool_schema_template.json](assets/templates/tool_schema_template.json) | Strict JSON tool schema template (`strict: true`, rationale scoped to non-reasoning models). |
 | [assets/templates/skill_template.md](assets/templates/skill_template.md) | Starter `SKILL.md` template conforming to the Agent Skills specification. |
 | [scripts/verify_skill.py](scripts/verify_skill.py) | Offline validator checking structure, frontmatter, links, templates, evals, and hygiene. |
-| [evals/evals.json](evals/evals.json) | Triggering and comparative evaluation test specification (executed on `cx/gpt-6-luna` in [evidence/evals_results.md](evidence/evals_results.md)). |
+| [evals/evals.json](evals/evals.json) | Triggering and comparative evaluation test specification (executed on `GPT 6 Luna` in [evidence/evals_results.md](evidence/evals_results.md)). |

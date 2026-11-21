@@ -13,7 +13,7 @@ Executes:
 Configured solely via environment variables:
   - GATEWAY_URL
   - API_KEY
-  - TARGET_MODEL (default: cx/gpt-6-luna)
+  - TARGET_MODEL (provenance evals ran on GPT 6 Luna)
 
 Writes raw JSONL traces (stripped of URLs and auth headers) to
 evidence/raw_evals/results_evals.jsonl and renders evidence/evals_results.md.
@@ -39,7 +39,7 @@ import urllib.error
 import urllib.request
 
 
-DEFAULT_MODEL = os.environ.get("TARGET_MODEL", "cx/gpt-6-luna")
+DEFAULT_MODEL = os.environ.get("TARGET_MODEL", "")
 DEFAULT_ITERATIONS = 5
 DEFAULT_CONCURRENCY = 8
 

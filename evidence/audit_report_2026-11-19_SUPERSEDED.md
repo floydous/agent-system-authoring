@@ -20,7 +20,7 @@
 **Working Directory**: `c:\Users\brat\.pi\agent\skills\agent-system-authoring`  
 **Audit Date**: 2026-11-19  
 **Auditor Mode**: Forensic Adversarial Fact-Checking & Specification Compliance Audit  
-**Target Empirical Validation Model**: `cx/gpt-6-luna (thinking level: xhigh)`  
+**Target Empirical Validation Model**: `GPT 6 Luna (thinking level: xhigh)`  
 **Gateway Execution Run ID**: `20261119_020610_3f7405` (228 genuine JSONL records)  
 **Authoritative Standards**: Agent Skills Open Specification (`https://agentskills.io/specification`), PEP 723, Vendor Official Documentation (OpenAI, Anthropic, Google Cloud), and Primary Scientific Literature (arXiv, ACL Anthology, NeurIPS, ICML, EMNLP, TACL, COLM).
 
@@ -111,14 +111,14 @@ Every rule in `references/evidence_ledger.md` (R-SYS-01 through R-SYS-10, R-TOOL
 - **Evidence Grade**: Grade A
 - **Primary Citations Audited**:
   1. Avni Mittal (ACL Anthology / arXiv, Mar 2026), *Did You Forget What I Asked? Prospective Memory Failures in Large Language Models*, [arXiv:2603.23530](https://arxiv.org/abs/2603.23530).
-  2. Gateway Empirical Validation on `cx/gpt-6-luna (thinking level: xhigh)` (SP-1, 2026).
+  2. Gateway Empirical Validation on `GPT 6 Luna (thinking level: xhigh)` (SP-1, 2026).
 - **Tested Models & Benchmarks**:
   - *Mittal*: 3 model families (8,000+ prompts) on GSM8K, math reasoning, and deterministic programmatic format verifiers.
-  - *SP-1*: 12 multi-step arithmetic word problems with JSON formatting invariants on `cx/gpt-6-luna (xhigh)`.
+  - *SP-1*: 12 multi-step arithmetic word problems with JSON formatting invariants on `GPT 6 Luna (xhigh)`.
 - **Reported Metrics & Scope Boundaries**:
   - Mittal found concurrent reasoning drops compliance by 2% to 21%, terminal constraints collapse by up to 50%, and math accuracy dropped from 93% to 27%. Trailing reminders restored compliance to 90%–100%.
-  - On `cx/gpt-6-luna (xhigh)`, baseline achieved 100.0% and sandwich achieved 100.0% ($\Delta = +0.0\%$, $p=1.0$), establishing a ceiling effect on moderate single-turn tasks for frontier reasoning models.
-- **Repo Claim vs Primary Evidence**: The repo accurately documents both Mittal's metrics and the empirical ceiling effect observed on `gpt-6-luna`.
+  - On `GPT 6 Luna (xhigh)`, baseline achieved 100.0% and sandwich achieved 100.0% ($\Delta = +0.0\%$, $p=1.0$), establishing a ceiling effect on moderate single-turn tasks for frontier reasoning models.
+- **Repo Claim vs Primary Evidence**: The repo accurately documents both Mittal's metrics and the empirical ceiling effect observed on `GPT 6 Luna`.
 - **Classification**: **Verified**.
 
 ---
@@ -129,14 +129,14 @@ Every rule in `references/evidence_ledger.md` (R-SYS-01 through R-SYS-10, R-TOOL
 - **Evidence Grade**: Grade A
 - **Primary Citations Audited**:
   1. Jang, Ye, & Seo (KAIST, NeurIPS / arXiv, Sept 2022), *Can Large Language Models Truly Understand Prompts? A Case Study with Negated Prompts*, [arXiv:2209.12711](https://arxiv.org/abs/2209.12711).
-  2. Gateway Empirical Validation on `cx/gpt-6-luna (thinking level: xhigh)` (SP-2, 2026).
+  2. Gateway Empirical Validation on `GPT 6 Luna (thinking level: xhigh)` (SP-2, 2026).
 - **Tested Models & Benchmarks**:
   - *Jang et al.*: OPT (125M–66B), GPT-3, InstructGPT, T0 on negation understanding.
-  - *SP-2*: 12 code generation and algorithmic extraction tasks testing prohibition of markdown backticks on `cx/gpt-6-luna (xhigh)`.
+  - *SP-2*: 12 code generation and algorithmic extraction tasks testing prohibition of markdown backticks on `GPT 6 Luna (xhigh)`.
 - **Reported Metrics & Scope Boundaries**:
   - Jang et al. proved inverse scaling on bare negated prompts (~50% chance performance) on earlier autoregressive models.
-  - SP-2 showed that on `cx/gpt-6-luna`, both bare negative and affirmative replacement achieved 100% constraint adherence (zero backticks) with 91.7% task accuracy ($\Delta = +0.0\%$). Crucially, affirmative replacement reduced mean reasoning tokens by **34.5%** (71.7 vs 109.5 tokens).
-- **Repo Claim vs Primary Evidence**: While `empirical_results.md` accurately reported the token reduction, `evidence_ledger.md` and `debunked_folklore.md` conflated Jang's 50% failure rate onto `gpt-6-luna`.
+  - SP-2 showed that on `GPT 6 Luna`, both bare negative and affirmative replacement achieved 100% constraint adherence (zero backticks) with 91.7% task accuracy ($\Delta = +0.0\%$). Crucially, affirmative replacement reduced mean reasoning tokens by **34.5%** (71.7 vs 109.5 tokens).
+- **Repo Claim vs Primary Evidence**: While `empirical_results.md` accurately reported the token reduction, `evidence_ledger.md` and `debunked_folklore.md` conflated Jang's 50% failure rate onto `GPT 6 Luna`.
 - **Classification**: **Minor Nuance Needed** (Overstated in ledger/folklore, correct in empirical report).
 - **Surgical Remediation Applied**: Clarified in `evidence_ledger.md` and `debunked_folklore.md` that frontier reasoning models complied 100% with bare negative constraints, but affirmative replacement achieved a 34.5% reduction in reasoning tokens.
 
@@ -149,11 +149,11 @@ Every rule in `references/evidence_ledger.md` (R-SYS-01 through R-SYS-10, R-TOOL
 - **Primary Citations Audited**:
   1. Basil, Shapiro, Shapiro, Mollick, Mollick, & Meincke (Wharton GAIL, Dec 2024 / 2025), *Prompting Science Report 4: Playing Pretend: Expert Personas Don't Improve Factual Accuracy*, [arXiv:2512.05858](https://arxiv.org/abs/2512.05858).
   2. Zheng, Pei, Logeswaran, Lee, & Jurgens (Nov 2023), *When "A Helpful Assistant" Is Not Really Helpful*, [arXiv:2311.10054](https://arxiv.org/abs/2311.10054).
-  3. Gateway Empirical Validation on `cx/gpt-6-luna (thinking level: xhigh)` (SP-3, 2026).
+  3. Gateway Empirical Validation on `GPT 6 Luna (thinking level: xhigh)` (SP-3, 2026).
 - **Tested Models & Benchmarks**:
   - *Basil et al.*: 6 frontier models on GPQA Diamond and MMLU-Pro.
   - *Zheng et al.*: 162 roles across 4 model families and 2,410 factual questions.
-  - *SP-3*: 12 complex algorithmic logic problems on `cx/gpt-6-luna (xhigh)`.
+  - *SP-3*: 12 complex algorithmic logic problems on `GPT 6 Luna (xhigh)`.
 - **Reported Metrics & Scope Boundaries**:
   - Basil et al. showed 0.0% statistically significant accuracy gain from expert personas.
   - Zheng et al. showed persona effects are unpredictable, and novice/low-knowledge personas degrade accuracy.
@@ -189,16 +189,16 @@ Every rule in `references/evidence_ledger.md` (R-SYS-01 through R-SYS-10, R-TOOL
   1. He, Rungta, Koleczek, et al. (Microsoft/MIT, Nov 2024), *Does Prompt Formatting Have Any Impact on LLM Performance?*, [arXiv:2411.10541](https://arxiv.org/abs/2411.10541).
   2. Liu & Chu (Kyoto Univ, Apr 2026), *Understanding the Prompt Sensitivity*, [arXiv:2604.18389](https://arxiv.org/abs/2604.18389).
   3. Anthropic Claude Prompt Engineering Guide (XML containers), [https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/use-xml-tags](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/use-xml-tags).
-  4. Gateway Empirical Validation on `cx/gpt-6-luna (thinking level: xhigh)` (SP-4, 2026).
+  4. Gateway Empirical Validation on `GPT 6 Luna (thinking level: xhigh)` (SP-4, 2026).
 - **Tested Models & Benchmarks**:
   - *He/Rungta et al.*: GPT-3.5 and GPT-4 on code translation across Markdown, JSON, YAML, and Plain Text (XML explicitly not evaluated).
-  - *SP-4*: 12 multi-constraint tasks evaluating Markdown headers (`### Instructions`) vs standard XML containers (`<instructions>`, `<rules>`, `<context>`) on `cx/gpt-6-luna (xhigh)`.
+  - *SP-4*: 12 multi-constraint tasks evaluating Markdown headers (`### Instructions`) vs standard XML containers (`<instructions>`, `<rules>`, `<context>`) on `GPT 6 Luna (xhigh)`.
 - **Reported Metrics & Scope Boundaries**:
   - Rungta et al. proved template formatting drives up to 40% accuracy swings.
-  - SP-4 demonstrated that packaging directives into XML containers caused a **15.4% drop in constraint compliance** (76.4% vs 90.3%, $p < 0.0001$) compared to Markdown headers on `gpt-6-luna`.
+  - SP-4 demonstrated that packaging directives into XML containers caused a **15.4% drop in constraint compliance** (76.4% vs 90.3%, $p < 0.0001$) compared to Markdown headers on `GPT 6 Luna`.
   - *Discrepancy*: The repo text previously framed the failed condition as "hyper-nested XML sub-tags" to preserve XML recommendations, whereas SP-4 tested standard XML containers.
 - **Classification**: **Overstated / Mischaracterized Condition**.
-- **Surgical Remediation Applied**: Surgically updated `evidence_ledger.md` (R-SYS-08), `system_instructions_guide.md` (Section 8), `empirical_results.md` (Section 4.4), and `SKILL.md` (line 25) to clarify that SP-4 tested standard XML containers vs Markdown headers (where Markdown outperformed XML by 15.4% on `gpt-6-luna`), and differentiated Anthropic-lineage (XML) from OpenAI-lineage (Markdown headers) best practices.
+- **Surgical Remediation Applied**: Surgically updated `evidence_ledger.md` (R-SYS-08), `system_instructions_guide.md` (Section 8), `empirical_results.md` (Section 4.4), and `SKILL.md` (line 25) to clarify that SP-4 tested standard XML containers vs Markdown headers (where Markdown outperformed XML by 15.4% on `GPT 6 Luna`), and differentiated Anthropic-lineage (XML) from OpenAI-lineage (Markdown headers) best practices.
 
 ---
 
@@ -290,10 +290,10 @@ Every rule in `references/evidence_ledger.md` (R-SYS-01 through R-SYS-10, R-TOOL
 - **Evidence Grade**: Grade A (Literature) / Active Hypothesis (Reasoning Models)
 - **Primary Citations Audited**:
   1. Faghih, Wang, Cheng, Bharti, Sriramanan, Balasubramanian, Hosseini, & Feizi (UMD, EMNLP 2025), *Tool Preferences in Agentic LLMs are Unreliable*, [arXiv:2505.18135](https://arxiv.org/abs/2505.18135).
-  2. Gateway Empirical Validation on `cx/gpt-6-luna (thinking level: xhigh)` (TS-1, 2026).
+  2. Gateway Empirical Validation on `GPT 6 Luna (thinking level: xhigh)` (TS-1, 2026).
 - **Reported Metrics & Scope Boundaries**:
   - Faghih et al. tested 17 models, proving assertive gaming phrasing inflated tool preference by **>10x (>1,000%)** without functional difference (Grade A).
-  - TS-1 tested `cx/gpt-6-luna (xhigh)` with $N=15$, observing a shift from 80.0% to 100.0% ($\Delta = +25.0\%$, $p = 0.0614$).
+  - TS-1 tested `GPT 6 Luna (xhigh)` with $N=15$, observing a shift from 80.0% to 100.0% ($\Delta = +25.0\%$, $p = 0.0614$).
   - *Conflict*: At $N=15$, $p = 0.0614$ is not statistically significant ($\alpha = 0.05$). In `unverified_hypotheses.md` (H-04), TS-1 is classified as an active hypothesis, whereas the ledger previously labeled it Grade A without qualification.
 - **Classification**: **Overstated / Internal Inconsistency**.
 - **Surgical Remediation Applied**: Clarified in `evidence_ledger.md` (R-TOOL-04), `debunked_folklore.md` (Line 21), and `empirical_results.md` (Section 4.5) that tool gaming on standard LLMs is Grade A (Faghih et al.), while replication on frontier reasoning models is an active hypothesis (H-04, $p=0.0614$).
@@ -306,10 +306,10 @@ Every rule in `references/evidence_ledger.md` (R-SYS-01 through R-SYS-10, R-TOOL
 - **Evidence Grade**: Grade A
 - **Primary Citations Audited**:
   1. ToolSandbox (Sun et al., Apple ML, NAACL 2024), [arXiv:2408.04682](https://arxiv.org/abs/2408.04682).
-  2. Gateway Empirical Validation on `cx/gpt-6-luna (thinking level: xhigh)` (TS-2, 2026).
+  2. Gateway Empirical Validation on `GPT 6 Luna (thinking level: xhigh)` (TS-2, 2026).
 - **Reported Metrics & Scope Boundaries**:
   - ToolSandbox proved argument documentation ablations induce severe argument hallucination.
-  - TS-2 demonstrated on `cx/gpt-6-luna (xhigh)` that omitting parameter descriptions on implicit domain strings (ISO 8601, ISO 4217, coordinates) resulted in a **100% format failure rate** (0.0% vs 100.0%, $\Delta = +100.0\%$, $p < 0.0001$).
+  - TS-2 demonstrated on `GPT 6 Luna (xhigh)` that omitting parameter descriptions on implicit domain strings (ISO 8601, ISO 4217, coordinates) resulted in a **100% format failure rate** (0.0% vs 100.0%, $\Delta = +100.0\%$, $p < 0.0001$).
 - **Classification**: **Verified**.
 
 ---
@@ -393,10 +393,10 @@ Every rule in `references/evidence_ledger.md` (R-SYS-01 through R-SYS-10, R-TOOL
 - **Primary Citations Audited**:
   1. Tam, Wu, Tsai, Lin, Lee, & Chen (Appier AI / NTU, EMNLP 2024), *Let Me Speak Freely?*, [arXiv:2408.02442](https://arxiv.org/abs/2408.02442).
   2. Nguyen et al. (Nokia Bell Labs, Jan 2026), [arXiv:2601.07525](https://arxiv.org/abs/2601.07525).
-  3. Gateway Empirical Validation on `cx/gpt-6-luna (thinking level: xhigh)` (TS-3, 2026).
+  3. Gateway Empirical Validation on `GPT 6 Luna (thinking level: xhigh)` (TS-3, 2026).
 - **Reported Metrics & Scope Boundaries**:
   - Tam et al. and Nguyen et al. showed that generating unconstrained reasoning tokens before constrained structured fields yields up to 27% accuracy gains on standard autoregressive LLMs.
-  - TS-3 proved that on reasoning models (`cx/gpt-6-luna xhigh`), internal test-time compute occurs prior to token emission, resulting in identical 100% accuracy regardless of parameter ordering ($\Delta = +0.0\%$, $p = 1.0$), while thought-first parameters add +46% token overhead.
+  - TS-3 proved that on reasoning models (`GPT 6 Luna xhigh`), internal test-time compute occurs prior to token emission, resulting in identical 100% accuracy regardless of parameter ordering ($\Delta = +0.0\%$, $p = 1.0$), while thought-first parameters add +46% token overhead.
 - **Classification**: **Verified** (Harmonized Nguyen date to Jan 2026).
 
 ---
@@ -488,11 +488,11 @@ Every refuted convention in `references/debunked_folklore.md` (Lines 12–22) wa
 | **14** | **50–100 Tools in Context** | Catastrophic accuracy drop (7% to 85.5%) as tool context expands from 8K to 120K tokens. | Kate et al. (IBM Research, LongFuncEval, arXiv:2505.10570); ToolLLM (ICLR 2024, arXiv:2307.16789) | **Verified** | Retained without modification. Fully supported by LongFuncEval. |
 | **15** | **Strict Negative Constraints** ("NEVER do X") | Bare negated prompts cause inverse scaling on earlier models; affirmative replacement saves reasoning tokens. | Jang et al. (arXiv:2209.12711); M1 SP-2 empirical data | **Minor Nuance Needed / Overstated** | Surgically updated Line 15: frontier reasoning models complied 100% with bare negative constraints, but affirmative replacement achieved a 34.5% reduction in reasoning tokens. |
 | **16** | **Temperature=0 Determinism** | Low-precision non-associativity (FP16/BF16) and multi-tenant batching cause up to 15% variance and 70% gaps. | Yuan et al. (arXiv:2506.09501); Atıl et al. (Eval4NLP, arXiv:2408.04667) | **Verified** | Retained without modification. Fully grounded in hardware non-associativity literature. |
-| **17** | **Prompt Format as Aesthetic Choice** | Formatting templates swing accuracy by up to 40% across Markdown/JSON/YAML/Text; XML containers dropped compliance by 15.4% on gpt-6-luna. | He/Rungta et al. (arXiv:2411.10541); Liu & Chu (arXiv:2604.18389); M1 SP-4 empirical data | **Minor Nuance Needed** | Clarified that He/Rungta et al. evaluated Markdown/JSON/YAML/Text (not XML); reported that SP-4 showed Markdown headers outperformed XML containers on `gpt-6-luna`. |
+| **17** | **Prompt Format as Aesthetic Choice** | Formatting templates swing accuracy by up to 40% across Markdown/JSON/YAML/Text; XML containers dropped compliance by 15.4% on GPT 6 Luna. | He/Rungta et al. (arXiv:2411.10541); Liu & Chu (arXiv:2604.18389); M1 SP-4 empirical data | **Minor Nuance Needed** | Clarified that He/Rungta et al. evaluated Markdown/JSON/YAML/Text (not XML); reported that SP-4 showed Markdown headers outperformed XML containers on `GPT 6 Luna`. |
 | **18** | **More Few-Shot Examples Always Better** | Over-prompting degrades performance when $k > 2–4$; examples override written rules in >85% of cases. | The Few-Shot Dilemma (arXiv:2509.13196) | **Verified** | Retained without modification. Fully grounded in Tang et al. (2025). |
 | **19** | **Indefinite System Prompt Authority** | Primacy decays past 50% context; recency dominates attention; terminal compliance drops up to 50% without sandwiching. | Liu et al. (TACL 2024); Veseli et al. (COLM 2025); Mittal (arXiv:2603.23530) | **Verified** | Retained without modification. Fully grounded in attention geometry literature. |
 | **20** | **Parameter Descriptions Redundant** | Omitting parameter descriptions on implicit domains produces a 100% format failure rate. | ToolSandbox (Apple ML, NAACL 2024); M1 TS-2 empirical data | **Verified** | Retained without modification. Fully verified by TS-2 empirical results. |
-| **21** | **LLMs Objectively Select Tools** | Phrasing superlatives inflate tool preference by >10x on standard LLMs; shifted from 80% to 100% on gpt-6-luna ($p=0.0614$). | Faghih et al. (UMD, EMNLP 2025); M1 TS-1 empirical data | **Minor Nuance Needed** | Clarified standard LLMs (Grade A in Faghih et al.) vs active hypothesis on frontier reasoning models (H-04, $p=0.0614$). |
+| **21** | **LLMs Objectively Select Tools** | Phrasing superlatives inflate tool preference by >10x on standard LLMs; shifted from 80% to 100% on GPT 6 Luna ($p=0.0614$). | Faghih et al. (UMD, EMNLP 2025); M1 TS-1 empirical data | **Minor Nuance Needed** | Clarified standard LLMs (Grade A in Faghih et al.) vs active hypothesis on frontier reasoning models (H-04, $p=0.0614$). |
 | **22** | **Strict JSON Mode Zero Negative Impact** | Format constraints damage multi-step reasoning unless reasoning precedes rigid fields. | Tam et al. (EMNLP 2024, arXiv:2408.02442); Nguyen et al. (Jan 2026, arXiv:2601.07525) | **Minor Nuance Needed** | Updated Nguyen et al. citation from "Oct 2026" to Jan 2026, `arXiv:2601.07525`. |
 
 ---
@@ -502,7 +502,7 @@ Every refuted convention in `references/debunked_folklore.md` (Lines 12–22) wa
 Audited against `references/empirical_results.md` and repo files.
 
 ### 4.1 Execution Record Arithmetic & Log Provenance
-- **Claimed Figures**: Target model `cx/gpt-6-luna (thinking level: xhigh)`, Run ID `20261119_020610_3f7405`, total 228 records across 7 hypothesis test suites, SHA256 summary metrics hash `49f6fb1bb9361ba2b1c9832c3aa0d20152e3e08c62bf9a5918d1ec67e07c31c6`.
+- **Claimed Figures**: Target model `GPT 6 Luna (thinking level: xhigh)`, Run ID `20261119_020610_3f7405`, total 228 records across 7 hypothesis test suites, SHA256 summary metrics hash `49f6fb1bb9361ba2b1c9832c3aa0d20152e3e08c62bf9a5918d1ec67e07c31c6`.
 - **Arithmetic Verification**:
   - SP-1: $N=12$ (baseline) + $N=12$ (sandwich) = 24
   - SP-2: $N=12$ (bare_negative) + $N=12$ (affirmative_replacement) = 24
@@ -519,7 +519,7 @@ Audited against `references/empirical_results.md` and repo files.
 
 | Suite ID | Hypothesis Name | Sample Size ($N$) | Mean Delta vs Baseline | p-value | Key Verified Insight | Status & Resolution |
 | :---: | :--- | :---: | :---: | :---: | :--- | :--- |
-| **SP-1** | Sandwich Prompting & Prospective Memory | $N=12$ per cond (24 total) | $+0.0\%$ (100% vs 100%) | $1.0000$ | Ceiling effect on `gpt-6-luna (xhigh)` for moderate single-turn prompts; prospective memory does not collapse without reminders. | **Verified** (Documented ceiling effect). |
+| **SP-1** | Sandwich Prompting & Prospective Memory | $N=12$ per cond (24 total) | $+0.0\%$ (100% vs 100%) | $1.0000$ | Ceiling effect on `GPT 6 Luna (xhigh)` for moderate single-turn prompts; prospective memory does not collapse without reminders. | **Verified** (Documented ceiling effect). |
 | **SP-2** | Affirmative Direction vs Bare Negatives | $N=12$ per cond (24 total) | $+0.0\%$ (91.7% vs 91.7%) | $1.0000$ | Both conditions achieved 100% adherence to negative constraints (zero backticks). Affirmative replacement reduced reasoning tokens by **34.5%** (71.7 vs 109.5). | **Surgically Corrected** (Removed 50% flatline claim from folklore/ledger). |
 | **SP-3** | Expert Persona vs Neutral Grounding | $N=12$ per cond (36 total) | $+0.0\%$ (100% across all 3 conds) | $1.0000$ | Expert personas provide 0% accuracy gain while increasing reasoning tokens by +19.4% and latency by +12.1%. | **Verified**. |
 | **SP-4** | XML Tag Containers vs Markdown Headers | $N=12$ per cond (24 total) | **-15.4%** (76.4% vs 90.3%) | $<0.0001$ | High-level XML containers (`<instructions>`, `<rules>`, `<context>`) dropped compliance by 15.4% compared to Markdown headers (`### Instructions`). | **Surgically Corrected** (Clarified test condition was XML containers vs Markdown, not hyper-nested tags). |
@@ -578,7 +578,7 @@ The following surgical modifications have been applied across the repository:
 1. **`references/evidence_ledger.md`**:
    - R-SYS-03: Softened injection claim to "significantly increases resistance against indirect prompt injection (up to 63% attack reduction in Wallace et al.) with minimal capability trade-offs".
    - R-SYS-05: Clarified that frontier reasoning models complied 100% with bare negative constraints, but affirmative replacement achieved a 34.5% reduction in reasoning tokens.
-   - R-SYS-08: Clarified that SP-4 tested standard XML containers vs Markdown headers (-15.4% on `gpt-6-luna`), and differentiated Anthropic (XML) vs OpenAI (Markdown) recommendations.
+   - R-SYS-08: Clarified that SP-4 tested standard XML containers vs Markdown headers (-15.4% on `GPT 6 Luna`), and differentiated Anthropic (XML) vs OpenAI (Markdown) recommendations.
    - R-TOOL-01: Corrected arXiv collision (Gorilla vs SubTokenTest), cited Hou et al. (ACL 2026) and TokDrift (arXiv:2510.14972), and qualified snake_case tokenization rationale.
    - R-TOOL-02: Disentangled BFCL (Patil et al., ICML 2025 / PMLR, `https://gorilla.cs.berkeley.edu/leaderboard.html`) from Gorilla (arXiv:2305.15334).
    - R-TOOL-04: Clarified standard LLMs (Grade A) vs active hypothesis on reasoning models (H-04, $p=0.0614$).
@@ -588,7 +588,7 @@ The following surgical modifications have been applied across the repository:
 
 2. **`references/debunked_folklore.md`**:
    - Line 15: Updated to reflect 100% adherence on bare negative constraints and 34.5% reasoning token reduction.
-   - Line 17: Clarified that He/Rungta et al. tested Markdown/JSON/YAML/Text (not XML); noted that SP-4 showed Markdown headers outperformed XML containers on `gpt-6-luna`.
+   - Line 17: Clarified that He/Rungta et al. tested Markdown/JSON/YAML/Text (not XML); noted that SP-4 showed Markdown headers outperformed XML containers on `GPT 6 Luna`.
    - Line 21: Clarified standard LLMs (Grade A) vs frontier reasoning models (H-04, $p=0.0614$).
    - Line 22: Updated Nguyen et al. citation to Jan 2026, `arXiv:2601.07525`.
 
@@ -608,7 +608,7 @@ The following surgical modifications have been applied across the repository:
 
 6. **`references/empirical_results.md`**:
    - Section 1 & Section 5: Added note that raw JSONL logs are stored in an external test archive per R-SKILL-05 packaging hygiene.
-   - Section 4.2 (SP-2): Added explicit note that bare negative constraints achieved 100% adherence (zero backticks) on `gpt-6-luna`, with 34.5% reasoning token reduction.
+   - Section 4.2 (SP-2): Added explicit note that bare negative constraints achieved 100% adherence (zero backticks) on `GPT 6 Luna`, with 34.5% reasoning token reduction.
    - Section 4.4 (SP-4): Clarified that the test condition was standard high-level XML containers vs Markdown headers.
    - Section 4.5 (TS-1): Added note that $p=0.0614$ at $N=15$ represents an active hypothesis (H-04).
 

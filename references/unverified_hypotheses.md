@@ -3,7 +3,7 @@
 ## Executive Summary
 Under this skill's evidence policy, items are placed here **only** when:
 1. A previously cited numerical threshold or claim was not supported by retrieved primary source text (**Unsupported Claim**);
-2. A learned-behavior finding failed to reproduce on `cx/gpt-6-luna (thinking level: xhigh)` (**Contested / Not Reproduced**); or
+2. A learned-behavior finding failed to reproduce on `GPT 6 Luna (thinking level: xhigh)` (**Contested / Not Reproduced**); or
 3. An engineering question lacks decisive experimental verification (**Open Hypothesis**).
 
 Findings from earlier models whose mechanism or training effect remains supported by primary literature are **not** placed here solely due to model age; they remain active rules in the skill guides with their tested models disclosed.
@@ -50,7 +50,7 @@ The following specific numbers and thresholds appeared in earlier versions of th
 - **Remaining Inconclusive Contrast**: `paired_affirmative` (`30/30`, `TARa@5 = 100%`) vs `bare_negative` (`27/30`, `TARa@5 = 83%`, Fisher `p = 0.2373`, paired `t = 1.00`, `p = 0.3632`) is directionally consistent across 30 runs but does not reach `alpha = 0.05`. Testing across a larger prompt set (`N >= 15` prompts × `5` repeats) is needed to resolve whether adding positive substitutes yields a reliable ~10 pp gain over bare prohibitions alone.
 
 ### C-02: Prospective Memory Under High Reasoning Effort (`R-SYS-04`, `PB-3`)
-- **Phase B Observation**: Even under ~1,200 words of noisy log distractors, `cx/gpt-6-luna (xhigh)` scored `30/30` (`1.000`) in both `system_only` and `sandwich_reminder` (ceiling/uninformative). Multi-turn sessions exceeding 50% context utilization remain untested here.
+- **Phase B Observation**: Even under ~1,200 words of noisy log distractors, `GPT 6 Luna (xhigh)` scored `30/30` (`1.000`) in both `system_only` and `sandwich_reminder` (ceiling/uninformative). Multi-turn sessions exceeding 50% context utilization remain untested here.
 
 ---
 
@@ -60,7 +60,7 @@ The following specific numbers and thresholds appeared in earlier versions of th
 
 ### H-02: Parameter Description Verbosity Ceiling & Attention Dilution
 - **Status**: **[NO EVIDENCE YET]**
-- **Context**: `TS-2` showed `cx/gpt-6-luna` fails on unstated custom formats (`geo_coordinates` no-space rule) while inferring standard ISO formats. The upper bound where verbose parameter descriptions bloat context or degrade sibling parameter accuracy remains unmeasured.
+- **Context**: `TS-2` showed `GPT 6 Luna` fails on unstated custom formats (`geo_coordinates` no-space rule) while inferring standard ISO formats. The upper bound where verbose parameter descriptions bloat context or degrade sibling parameter accuracy remains unmeasured.
 - **Test Design**: Vary description length (`10`, `30`, `60`, `120`, `250` tokens per parameter) across multi-argument tools with non-obvious format rules (`N >= 5` iterations).
 
 ### H-03: Markdown Syntax Inside JSON Tool Descriptions
@@ -80,4 +80,4 @@ The following specific numbers and thresholds appeared in earlier versions of th
 
 ### H-08: Cross-Model Generalization on Latest Frontier Families
 - **Status**: **[NO EVIDENCE YET ON OUR ROUTER]**
-- **Context**: Empirical Phase A and Phase B runs (`708` total records) evaluated `cx/gpt-6-luna`. Direct empirical transfer to `Gemini 4 Hydrogen`, `Claude Fable 5.2`, `Claude Opus 5.5`, and `GPT 6.2 Astra` awaits multi-model gateway access.
+- **Context**: Empirical Phase A and Phase B runs (`708` total records) evaluated `GPT 6 Luna`. Direct empirical transfer to `Gemini 4 Hydrogen`, `Claude Fable 5.2`, `Claude Opus 5.5`, and `GPT 6.2 Astra` awaits multi-model gateway access.
