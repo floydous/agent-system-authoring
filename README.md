@@ -46,10 +46,23 @@ Across `708` benchmark completions (`228` Phase A runs at `N = 1`, `480` Phase B
 
 ## Installation & Offline Verification
 
-Place or clone this directory into your agent's skills root (e.g., `~/.pi/agent/skills/agent-system-authoring` or your harness skills directory):
+Install directly with [vercel-labs/skills](https://github.com/vercel-labs/skills) (`Node.js >= 22.20`):
 
 ```bash
-git clone git@github.com:floydous/agent-system-authoring.git
+# List discovered skills
+npx skills add floydous/agent-system-authoring --list
+
+# Install to current project (or add -g for global install)
+npx skills add floydous/agent-system-authoring
+
+# Pin to v1.0.0 release tag
+npx skills add floydous/agent-system-authoring@v1.0.0
+```
+
+Alternatively, clone directly into your agent's skills root (e.g., `~/.pi/agent/skills/agent-system-authoring`):
+
+```bash
+git clone https://github.com/floydous/agent-system-authoring.git
 cd agent-system-authoring
 ```
 
