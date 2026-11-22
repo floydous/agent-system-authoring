@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "name": "execute_sql_query",
-  "description": "Executes a read-only SQL SELECT query against the structured customer analytics database. Use this tool when retrieving relational metrics such as order counts, customer account statuses, or transaction histories. Do NOT use this tool for searching unstructured documentation or markdown guides; use search_knowledge_base instead. Only SELECT statements are permitted; queries are bounded by timeout_ms and reject mutating keywords.",
+  "description": "Executes a read-only SQL SELECT query against the structured customer analytics database (OpenAI strict: true schema template; for Anthropic/Gemini optionals see references/tool_schema_guide.md). Use this tool when retrieving relational metrics such as order counts, customer account statuses, or transaction histories. Do NOT use this tool for searching unstructured documentation or markdown guides; use search_knowledge_base instead. Only SELECT statements are permitted; queries are bounded by timeout_ms and reject mutating keywords.",
   "strict": true,
   "type": "object",
   "properties": {

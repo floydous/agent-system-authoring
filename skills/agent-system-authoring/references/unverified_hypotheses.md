@@ -12,7 +12,7 @@ Findings from earlier models whose mechanism or training effect remains supporte
 
 ## 1. Unsupported Claims & Numbers Removed From Active Rules
 
-The following specific numbers and thresholds appeared in earlier versions of this repository but were **absent from or contradicted by** the retrieved primary texts verified in [source_checks.md](../evidence/source_checks.md):
+The following specific numbers and thresholds appeared in earlier versions of this repository but were **absent from or contradicted by** the retrieved primary texts verified in [source_checks.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/source_checks.md):
 
 1. **Fabricated `<= 10` Simultaneous Instruction Cap & `100% -> 21%` Collapse (formerly `R-SYS-01`)**:
    - *Removed claim*: "Cap active concurrent rules to `<= 10`; GPT-4o accuracy collapses from 100% to 21% at 10 rules; o3 holds up to 15–20 rules."
@@ -43,14 +43,20 @@ The following specific numbers and thresholds appeared in earlier versions of th
 
 ---
 
-## 2. Statistically Inconclusive / Ceiling Comparisons After Phase B
+## 2. Resolved / Ceiling / Underpowered Comparisons After Phase B & Phase C
 
-### C-01: Paired Affirmative Substitutes vs Bare Prohibitions (`R-SYS-05`, `PB-4`)
-- **Resolved in Phase B**: `affirmative_only` (without explicit prohibitions) dropped to `14/30` (`46.7%`), losing significantly to `bare_negative` (`27/30` = `90.0%`, `p = 0.0006`) and `paired_affirmative` (`30/30` = `100.0%`, `p = 1.944e-06`).
-- **Remaining Inconclusive Contrast**: `paired_affirmative` (`30/30`, `TARa@5 = 100%`) vs `bare_negative` (`27/30`, `TARa@5 = 83%`, Fisher `p = 0.2373`, paired `t = 1.00`, `p = 0.3632`) is directionally consistent across 30 runs but does not reach `alpha = 0.05`. Testing across a larger prompt set (`N >= 15` prompts × `5` repeats) is needed to resolve whether adding positive substitutes yields a reliable ~10 pp gain over bare prohibitions alone.
+### C-01: Paired Affirmative Substitutes vs Bare Prohibitions (`R-SYS-05`, `PB-4` -> Resolved in `PC-2`)
+- **Phase B (`PB-4`, `n = 6` prompts)**: `paired_affirmative` (`30/30`) beat `affirmative_only` (`14/30`, `t(5) = 4.00, p = 0.0103`), while `bare_negative` (`27/30`) vs `affirmative_only` (`t(5) = 2.38, p = 0.0631`) was underpowered at `n = 6`.
+- **Phase C Resolution (`PC-2`, `n = 16` prompts × `5` repeats = `80`/arm)**: Both `bare_negative` (`0.988`, `79/80`, `t(15) = 4.06, p = 0.0010`) and `paired_affirmative` (`0.950`, `76/80`, `t(15) = 3.87, p = 0.0015`) decisively beat `affirmative_only` (`0.650`, `52/80`, `38` hits). Comparing `paired_affirmative` against `bare_negative` across `16` prompts yielded `delta = -0.038, t(15) = -1.00, p = 0.3332` (sign `p = 1.0000`), showing explicit `Do NOT` prohibitions—not positive substitutes—drive token exclusion.
 
 ### C-02: Prospective Memory Under High Reasoning Effort (`R-SYS-04`, `PB-3`)
 - **Phase B Observation**: Even under ~1,200 words of noisy log distractors, `GPT 6 Luna (xhigh)` scored `30/30` (`1.000`) in both `system_only` and `sandwich_reminder` (ceiling/uninformative). Multi-turn sessions exceeding 50% context utilization remain untested here.
+
+### C-03: Expert Personas on Small-Sample Benchmarks (`R-SYS-06`, `PB-5`)
+- **Phase B Observation**: At `reasoning_effort = "low"`, `neutral_objective` scored `0.967` (`29/30`, `TARa@5 = 83%`) vs `expert_persona` `0.900` (`27/30`, `TARa@5 = 50%`, prompt-level `t(5) = -1.00, p = 0.3632`). Because `n = 6` prompts is underpowered to independently prove a zero difference, `R-SYS-06` rests primarily on **T5** literature (`Zheng et al.`, `Basil et al.`).
+
+### C-04: Instruction-Boundary vs Mid-Context Recall Trade-Off (`R-SYS-02`)
+- **Untested Design Trade-Off**: Placing bulky retrieved documents in the middle protects start-of-context invariants and end-of-context format constraints (`T5` primacy/recency) at the potential cost of weaker mid-context document retrieval (`Lost in the Middle`). Controlled ablation varying document position alongside adversarial boundary rules has not yet been executed here.
 
 ---
 

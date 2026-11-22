@@ -13,7 +13,7 @@ An **Agent Skill** is a self-contained directory containing a `SKILL.md` entrypo
   - `references/`: Additional documentation loaded when needed.
   - `assets/`: Static templates, schemas, images, or data files.
 - **Project Conventions**:
-  For skills authored with this repository's workflow, `evals/` (`evals.json` trigger/comparative test cases) and `evidence/` (raw empirical traces and provenance scripts, when empirical claims are made) are adopted as **Project conventions** rather than open-spec mandates. Keep subdirectory names lowercase and limit nesting depth cleanly (e.g., `<= 3` levels).
+  For skills authored with this repository's workflow, `evals/` (`evals.json` trigger/comparative test cases) and repo-root `evidence/` (raw empirical traces and provenance scripts, kept outside `skills/<name>/` so user installs remain lightweight) are adopted as **Project conventions** rather than open-spec mandates. Keep subdirectory names lowercase and limit nesting depth cleanly (e.g., `<= 3` levels).
 
 ---
 
@@ -60,7 +60,7 @@ An **Agent Skill** is a self-contained directory containing a `SKILL.md` entrypo
   Keep distributed skill packages focused on runtime execution, documentation, and inspectable evidence rather than development residue:
   - **Omit Private Secrets**: Never bundle API keys, bearer tokens, passwords, or internal private endpoints.
   - **Omit Transient Caches**: Clean `__pycache__/`, `.pytest_cache/`, `.mypy_cache/`, `.DS_Store`, and temporary scratch artifacts before shipping.
-  - **Omit Development Test Runners & Synthetic/Mock Dumps**: Keep `tests/`, `pytest.ini`, and `mock_*` files out of the skill bundle. When publishing empirical claims, keep primary traces and recomputation scripts isolated under `evidence/`.
+  - **Omit Development Test Runners & Synthetic/Mock Dumps**: Keep `tests/`, `pytest.ini`, and `mock_*` files out of the skill bundle. Keep heavy empirical traces and provenance scripts isolated in a separate repo-root `evidence/` archive rather than inside the installable `skills/<skill-name>/` package.
 
 ---
 

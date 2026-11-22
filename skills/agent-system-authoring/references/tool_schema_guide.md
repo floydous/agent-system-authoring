@@ -48,28 +48,28 @@ This guide documents rules for designing tool and function schemas (JSON Schema,
 ---
 
 ### R-TOOL-04: Description Neutrality & Anti-Gaming Hygiene
-- **Evidence Tier**: **T2 (Measured on `GPT 6 Luna`, `PB-2`)** + **T5** (`Faghih et al.`)
+- **Evidence Tier**: **T2 (Measured on `GPT 6 Luna`, `PC-1` & `PB-2`)** + **T5** (`Faghih et al.`)
 - **Primary Citations**:
-  - `PB-2` in [stats_recomputed.md](../evidence/stats_recomputed.md) (`evidence/raw_phase_b/results_PB-2.jsonl`).
+  - `PC-1` (`16` counterbalanced prompts × `5` repeats) & `PB-2` in [stats_recomputed.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/stats_recomputed.md).
   - Faghih, Wang, Cheng, Bharti, Sriramanan, Balasubramanian, Hosseini, & Feizi (May 2025 / EMNLP 2025), *Tool Preferences in Agentic LLMs are Unreliable*, [arXiv:2505.18135](https://arxiv.org/abs/2505.18135).
-- **Models Tested**: `GPT 6 Luna (xhigh)` (`PB-2`, `N = 5` runs/prompt); `17` models including `GPT-4.1` and `Qwen2.5-7B` (Faghih et al.).
-- **Verified `T2` Finding (`PB-2`, deconfounded symmetric tools)**:
-  In `PB-2` (`records_provider_alpha` vs `records_provider_beta`, identical neutral baselines), `beta` was chosen **`0/30` (`0.0%`)** at baseline (`neutral_ab`) and **`0/30` (`0.0%`, `p = 1.0000`)** when only a neutral usage example was appended (`example_on_beta`). Adding assertive promotional superlatives (`"Primary and preferred tool; actively maintained and optimized; invoke whenever possible."`) flipped selection to **`30/30` (`100.0%`, Fisher `p = 1.691e-17`)**, confirming on `GPT 6 Luna` the >`10x` gaming vulnerability reported across `17` LLMs by Faghih et al.
+- **Models Tested**: `GPT 6 Luna` (`PC-1` `high`, `PB-2` `xhigh`, `N = 5` runs/prompt); `17` models including `GPT-4.1` and `Qwen2.5-7B` (Faghih et al.).
+- **Verified `T2` Finding (`PC-1` counterbalanced & `PB-2`)**:
+  In `PC-1` (`n = 16` prompts, array order & names `records_lookup_east` / `records_lookup_west` counterbalanced 50/50 across `80` runs/arm), under neutral identical descriptions the model called both tools in parallel (`67/80`) or chose position 0 (`13/80`), selecting `second_tool` exclusively **`0/80`** (`0/16` prompts). Appending a neutral usage example (`example_on_second`) caused **`0/80`** exclusive shift (`75/80` parallel-both, `5/80` position 0, prompt sign `p = 1.0000`). Appending assertive promotional superlatives (`"Primary and preferred tool; actively maintained and optimized; invoke whenever possible."`) flipped exclusive single selection of `second_tool` across **`16/16` prompts (`80/80` runs: `40` east + `40` west, exact prompt sign `p = 3.052e-05`)**, completely overriding both position preference and parallel hedging. (Consistent with un-counterbalanced `PB-2`: `6/6` prompts flipped, sign `p = 0.0312`.) *Scope caveat*: tested on functionally equivalent candidate tools; asymmetric functional scopes remain governed primarily by applicability.
 - **Schema Directive**:
-  - Keep tool descriptions objective and strictly neutral; omit promotional superlatives (`"best"`, `"preferred"`, `"invoke whenever possible"`). Usage examples alone did not bias selection in `PB-2`.
+  - Keep tool descriptions objective and strictly neutral; omit promotional superlatives (`"best"`, `"preferred"`, `"invoke whenever possible"`). Neutral usage examples alone did not bias selection in `PC-1` or `PB-2`.
 
 ---
 
 ### R-TOOL-05: Parameter Descriptions for Non-Universal Formats & Conventions
 - **Evidence Tier**: **T2 (Measured on `GPT 6 Luna`, narrowed)** + **T5** (`ToolSandbox`)
 - **Primary Citations**:
-  - `TS-2` in [stats_recomputed.md](../evidence/stats_recomputed.md) (`evidence/raw/results_TS-2.jsonl`).
+  - `TS-2` in [stats_recomputed.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/stats_recomputed.md) (`evidence/raw/results_TS-2.jsonl`).
   - Lu et al. (ToolSandbox, NAACL 2025 Findings), [arXiv:2408.04682](https://arxiv.org/abs/2408.04682).
-- **Models Tested**: `GPT 6 Luna (xhigh)` (`TS-2`); `GPT-4`, `GPT-4o`, `Claude-3-Sonnet`, `Gemini-1.5` (ToolSandbox).
+- **Models Tested**: `GPT 6 Luna (xhigh)` (`TS-2`, `15` matched prompts); `GPT-4`, `GPT-4o`, `Claude-3-Sonnet`, `Gemini-1.5` (ToolSandbox).
 - **Verified `T2` Finding (`TS-2`)**:
-  When parameter format descriptions were omitted on `GPT 6 Luna (xhigh)`, universally standardized formats were usually inferred (`timestamp_valid` ISO 8601 UTC: `15/15`; `currency_valid` ISO 4217: `12/15` vs `15/15`, Fisher `p = 0.2241`), whereas an unstated non-universal spacing convention (`geo_coordinates` requiring `"lat,lon"` without spaces instead of `"lat, lon"`) failed **`0/15` vs `15/15`** (Fisher `p = 1.289e-08`; `all_fields_valid` `p = 1.289e-08`). Descriptive schemas also lowered mean reasoning tokens from `39.1` to `21.1` (`t = -4.95`, `p = 0.0002`, 1 run/prompt).
+  When parameter format descriptions were omitted on `GPT 6 Luna (xhigh)`, universally standardized formats were mostly inferred (`timestamp_valid` ISO 8601 UTC: `15/15`; `currency_valid` ISO 4217: `12/15` vs `15/15`, matched-pair exact sign `p = 0.2500`), whereas an unstated non-universal spacing convention (`geo_coordinates` requiring `"lat,lon"` without spaces instead of `"lat, lon"`) failed **`0/15` vs `15/15`** (matched-pair exact sign / McNemar **`p = 6.104e-05`**; `all_fields_valid` **`p = 6.104e-05`**). Descriptive schemas also lowered mean reasoning tokens from `39.1` to `21.1` (`t(14) = -4.95`, `p = 0.0002`, 1 run/prompt).
 - **Schema Directive**:
-  - Supply an explicit `description` for every parameter, prioritizing exact syntax examples, spacing rules, units, timezones, and bounds for any convention not universally standardized.
+  - Provide an explicit `description` for every parameter, prioritizing exact syntax examples, spacing rules, units, timezones, and bounds for any convention not universally standardized.
 
 ---
 
@@ -114,29 +114,32 @@ This guide documents rules for designing tool and function schemas (JSON Schema,
 
 ---
 
-### R-TOOL-10: Strict JSON Schema Specification
-- **Evidence Tier**: **T1 (Verified Fact — OpenAI API Specification)**
+### R-TOOL-10: Provider-Scoped Strict JSON Schema Conformance
+- **Evidence Tier**: **T1 (Verified Fact — Provider API Specifications)**
 - **Primary Citations**:
   - OpenAI Structured Outputs (`Supported schemas`, retrieved 2026-11-22), [developers.openai.com](https://developers.openai.com/api/docs/guides/structured-outputs).
+  - Anthropic Structured Outputs & Strict Tool Use (retrieved 2026-11-22), [platform.claude.com](https://platform.claude.com/docs/en/build-with-claude/structured-outputs).
+  - Google Gemini Function Calling (retrieved 2026-11-22), [ai.google.dev](https://ai.google.dev/gemini-api/docs/function-calling).
   - Nguyen, Silva, Zumot, Tupikina, Aghasaryan, & Alam (Jan 2026), *Thinking Before Constraining*, [arXiv:2601.07525](https://arxiv.org/abs/2601.07525).
-- **Verified Requirement**:
-  When enabling OpenAI `strict: true` mode:
-  1. Set `"additionalProperties": false` on every object schema.
-  2. List **all** declared properties in `"required"`.
-  3. Emulate optional parameters with nullable unions (`"type": ["string", "null"]` or `anyOf`).
-  4. Constrained decoding enforces syntactic schema adherence during token sampling.
+- **Verified Provider Matrix**:
+  Strict-mode rules differ by provider—do not apply OpenAI-only rules universally:
+  1. **OpenAI (`"strict": true`)**: Requires `"additionalProperties": false` on every object schema and **all** property keys listed in `"required"`. Emulate optional fields with nullable unions (`"type": ["string", "null"]` or `"anyOf"`).
+  2. **Anthropic (`"strict": true` on tool object alongside `input_schema`)**: Requires `"additionalProperties": false` on every object, while optional parameters may be omitted from `"required"` (up to `24` optional params, `16` union params, and `20` strict tools per request across compiled grammars; note Anthropic emits `required` keys before optional keys regardless of schema declaration order).
+  3. **Google Gemini Function Calling**: Uses standard JSON Schema / OpenAPI subsets inside `parameters` with no `"strict": true` toggle; optional fields are omitted from `"required"`, though Google advises marking properties `required` and allowing `null` only if deep grammar branching triggers `400 INVALID_ARGUMENT`.
+- **Schema Directive**:
+  - Set `"additionalProperties": false` on object nodes where strict validation is supported, and apply `"required"` + nullable-union conventions according to your target provider (`OpenAI`, `Anthropic`, or `Gemini`).
 
 ---
 
 ### R-TOOL-11: In-Schema `rationale` Field When Pre-Emission Thinking Is Absent
 - **Evidence Tier**: **T2 (Measured on `GPT 6 Luna`, `PB-6`)** + **T4 (Mechanism: autoregressive left-to-right constrained decoding)**
 - **Primary Citations**:
-  - `PB-6` (`reasoning_effort = "none"`) & `TS-3` (`xhigh`) in [stats_recomputed.md](../evidence/stats_recomputed.md).
+  - `PB-6` (`reasoning_effort = "none"`) & `TS-3` (`xhigh`) in [stats_recomputed.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/stats_recomputed.md).
   - Tam, Wu, Tsai, Lin, Lee, & Chen (Aug 2024 / EMNLP 2024), *Let Me Speak Freely?*, [arXiv:2408.02442](https://arxiv.org/abs/2408.02442).
   - Nguyen et al. (Jan 2026), *Thinking Before Constraining*, [arXiv:2601.07525](https://arxiv.org/abs/2601.07525) & Anthropic `define-tools`.
-- **Models Tested**: `GPT 6 Luna` (`PB-6` `none` & `TS-3` `xhigh`); non-reasoning LLMs (Tam et al., Nguyen et al.).
-- **Verified `T2` & `T4` Result (`PB-6`, `N = 5` runs/prompt, `reasoning_tokens = 0`)**:
-  When `reasoning_effort = "none"` (`0` reasoning tokens across all 90 runs, simulating non-reasoning constrained JSON decoding), multi-step scheduling/arithmetic accuracy scored **`11/30` (`36.7%`)** for `no_rationale` and an identical **`11/30` (`36.7%`)** when `rationale` followed the action parameters (`rationale_last`). Placing `rationale` **first** (`rationale_first`) raised accuracy to **`30/30` (`100.0%`)** (paired `t = 3.12, p = 0.0261`; Fisher exact **`p = 5.343e-08`** vs both `no_rationale` and `rationale_last`). By contrast, under `xhigh` pre-emission reasoning (`TS-3`), all orderings scored `15/15` (`100%`).
+- **Models Tested**: `GPT 6 Luna` (`PB-6` `none` as a zero-thinking proxy & `TS-3` `xhigh`); non-reasoning LLMs (Tam et al., Nguyen et al.).
+- **Verified `T2` & `T4` Result (`PB-6`, `n = 6` prompts × `5` repeats, `reasoning_tokens = 0`)**:
+  When `reasoning_effort = "none"` (`0` reasoning tokens across all 90 runs, simulating constrained JSON decoding without pre-emission thinking on a reasoning-capable model), multi-step scheduling/arithmetic accuracy scored **`11/30` (`36.7%`)** for `no_rationale` and an identical **`11/30` (`36.7%`)** when `rationale` followed the action parameters (`rationale_last`). Placing `rationale` **first** (`rationale_first`) raised accuracy to **`30/30` (`100.0%`)** (prompt-level paired **`t(5) = 3.12, p = 0.0261`**; sign `4+/0-, p = 0.1250`). By contrast, under `xhigh` pre-emission reasoning (`TS-3`), all orderings scored `15/15` (`100%`). Note that Anthropic `strict: true` preserves declared ordering only for `required` properties ahead of optional properties.
 - **T3 Anthropic Refusal Caveat**:
   Anthropic warns: *"If a parameter asks Claude why it is making the call, ask for a short explanation or the supporting evidence. A parameter that asks for the model's thinking or step-by-step reasoning might lead to a `reasoning_extraction` refusal."*
 - **Schema Directive**:

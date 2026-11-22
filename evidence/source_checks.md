@@ -42,6 +42,15 @@
   - Enum support & documented numeric limits: `"A schema may have up to 1000 enum values across all enum properties. For a single enum property with string values, the total string length of all enum values cannot exceed 15,000 characters when there are more than 250 enum values."` Also: up to `5000` object properties total, up to `10` levels of nesting, max `120,000` total string chars across property/definition/enum/const names.
 - **Remediations Applied**: Removed invented `≤ 20` enum threshold and fabricated `+15–25 pp` / `10%–25%` figures from `R-TOOL-06`; grounded large-enum guidance in OpenAI's documented `250`/`1000`/`15,000` bounds plus Google's state-machine rejection doc (`R-TOOL-07`).
 
+### 1.6 Anthropic Structured Outputs & Strict Tool Use (`R-TOOL-10`)
+- **URL**: `https://platform.claude.com/docs/en/build-with-claude/structured-outputs` (referencing `https://platform.claude.com/docs/en/agents-and-tools/tool-use/strict-tool-use`)
+- **Retrieved**: 2026-11-22 (via `bratroute` `web_extract`)
+- **Verified Quotes & Constraints**:
+  - `strict: true` constraints: `required` and `"additionalProperties"` (`"must be set to false for objects"`) are supported, while optional parameters omitted from `required` are allowed (unlike OpenAI, where every property must be in `required`). Top-level `"strict": true` sits on the tool object alongside `input_schema`.
+  - Documented compiled-grammar request limits across `output_config.format` and `strict: true` tools: `20` max strict tools per request; `24` max optional parameters (not listed in `required`) across all strict tool and JSON output schemas; `16` max parameters using union types (`anyOf` or `"type": ["string", "null"]`) across all strict schemas (`"These are especially expensive because they create exponential compilation cost"`). Guidance adds: `"Reduce optional parameters. Make parameters required where possible. Each optional parameter roughly doubles a portion of the grammar's state space."`
+  - Property ordering caveat: `"When using structured outputs, properties in objects maintain their defined ordering from your schema, with one important caveat: required properties appear first, followed by optional properties."` (`"If property order in the output is important to your application, mark all properties as required, or account for this reordering in your parsing logic."`)
+  - Enum capitalization caveat: Anthropic docs note case-insensitive enum matching may emit mismatched capitalization (e.g., `"Conversation Topic 3"`) without error, advising callers to compare case-insensitively and avoid enum values differing only by capitalization.
+
 ---
 
 ## 2. Vendor Engineering Documentation (Tier 3)
@@ -78,12 +87,13 @@
   - Also references `gpt-6-luna` and `gpt-6.2-astra` in `reasoning.md`.
 - **Remediations Applied**: Removed `"officially deprecates"`.
 
-### 2.5 Google Gemini / Vertex AI Structured Outputs (`R-TOOL-06`, `R-TOOL-07`)
-- **URL**: `https://aistudio.google.com/docs/structured-output` (plus `https://aistudio.google.com/docs/function-calling`)
+### 2.5 Google Gemini / Vertex AI Structured Outputs & Function Calling (`R-TOOL-06`, `R-TOOL-07`, `R-TOOL-10`)
+- **URL**: `https://aistudio.google.com/docs/structured-output` & `https://ai.google.dev/gemini-api/docs/function-calling`
 - **Retrieved**: 2026-11-22 (HTTP 200 direct fetch + `bratroute` `web_extract`)
 - **Verified Quotes**:
-  - `"To generate structured output, the API compiles your JSON Schema into a state machine that constrains token generation. This state machine enforces limits on total states, branching paths, and nesting depth. If your schema exceeds these limits, the API rejects the request with a 400 INVALID_ARGUMENT error."`
-  - `"Move non-structural rules to descriptions: Field description properties and system instructions guide the model without adding states to the output grammar."`
+  - Function declarations: passed with `type: "function"`, `name`, `description`, and `parameters` (`type`, `properties`, `required` array of mandatory parameter names) — there is no OpenAI/Anthropic `"strict": true` toggle, and `"Only a subset of the OpenAPI schema is supported."` Optional parameters are normally omitted from `required`.
+  - Complex schema / `any`-mode limits: `"When you use any mode or define complex parameter schemas, the API compiles your function declarations into a state machine that constrains token generation. This state machine enforces limits on total states, branching paths, and nesting depth. If the combined complexity of your tools exceeds these limits, the API rejects the request with a 400 INVALID_ARGUMENT error."`
+  - Schema simplification guidance: `"Move non-structural rules to descriptions: Field description properties and system instructions guide the model without adding states to the output grammar."` Further advises: `"Split large tool sets and move rules to descriptions"`, `"Flatten nested objects and bound recursion"`, `"Reduce branching from optional fields, enums, and anyOf: ... Mark properties as required where possible and allow null values when a field can be empty"`, and `"Shorten property names and drop array bounds"`.
   - Note: Google docs do NOT specify a `>20–50` enum cutoff or a `>30%` accuracy drop; both numbers were deleted.
 
 ---

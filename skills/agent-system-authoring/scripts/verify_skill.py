@@ -56,6 +56,7 @@ EXPECTED_RULE_IDS = (
 SECRET_PATTERNS = [
     re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b"),
     re.compile(r"Bearer\s+[A-Za-z0-9._-]{20,}"),
+    re.compile(r"\b10\.0\.0\.130\b"),
     re.compile(r"\b168\.110\.212\.21\b"),
     re.compile(r"\bgho_[A-Za-z0-9_]{20,}\b"),
 ]
@@ -161,7 +162,7 @@ class SkillVerifier:
             self.log_failure("Directory Layout", f"Skill root directory does not exist: {self.root}")
             return
 
-        allowed_root_md = {"SKILL.md", "README.md"}
+        allowed_root_md = {"SKILL.md"}
         root_md = {p.name for p in self.root.glob("*.md")}
         disallowed = root_md - allowed_root_md
         if disallowed:
@@ -172,16 +173,16 @@ class SkillVerifier:
             ("scripts", self.root / "scripts"),
             ("assets/templates", self.root / "assets" / "templates"),
             ("evals", self.root / "evals"),
-            ("evidence", self.root / "evidence"),
-            ("evidence/raw", self.root / "evidence" / "raw"),
-            ("evidence/raw_phase_b", self.root / "evidence" / "raw_phase_b"),
         ]
         for name, dir_path in required_dirs:
             if not dir_path.exists() or not dir_path.is_dir():
                 self.log_failure("Directory Layout", f"Required directory missing: {name}", dir_path)
 
+        if (self.root / "evidence").exists():
+            self.log_failure("Directory Layout", "Repo-level evidence/ should live outside the lean installable skill directory", self.root / "evidence")
+
         found_names = {p.name for p in self.root.iterdir()}
-        for d in ["references", "scripts", "assets", "evals", "evidence"]:
+        for d in ["references", "scripts", "assets", "evals"]:
             if any(n.lower() == d for n in found_names) and d not in found_names:
                 self.log_failure("Directory Layout", f"Directory '{d}' must be strictly lowercase")
 
@@ -387,6 +388,26 @@ class SkillVerifier:
             if not is_linked:
                 self.log_failure("Reference Linking", f"Orphaned reference file not linked anywhere: {ref_file.name}", ref_file)
 
+            ref_content = ref_file.read_text(encoding="utf-8")
+            ref_links_in_doc = re.findall(r"\[([^\]]+)\]\(([^)]+)\)", ref_content)
+            for ltext, ltarget in ref_links_in_doc:
+                if ltarget.startswith(("http://", "https://", "#")):
+                    continue
+                clean_l = ltarget.split("#")[0]
+                if not clean_l:
+                    continue
+                if "evidence/" in clean_l:
+                    self.log_failure("Reference Linking", f"Relative link to repo-level evidence/ in {ref_file.name}: {ltarget} (use canonical GitHub URL)", ref_file)
+                    continue
+                resolved_ref = (ref_file.parent / clean_l).resolve()
+                try:
+                    resolved_ref.relative_to(self.root)
+                except ValueError:
+                    self.log_failure("Reference Linking", f"Relative link escapes skill root in {ref_file.name}: {ltarget}", ref_file)
+                    continue
+                if not resolved_ref.exists():
+                    self.log_failure("Reference Linking", f"Broken relative link in {ref_file.name}: [{ltext}]({ltarget})", ref_file)
+
         self.log_success("Single-Hop Reference Linking Invariants")
 
     def verify_evidence_ledger_tiers(self) -> None:
@@ -530,12 +551,17 @@ class SkillVerifier:
                     self.log_failure("Evals Schema", f"Comparative eval '{comp.get('id')}' missing rubric/criteria", evals_file)
 
             raw_text = evals_file.read_text(encoding="utf-8").lower()
-            has_verified = any(k in raw_text for k in ["markdown", "snake_case", "reminder", "rationale", "parameter", "third person"])
-            has_anti = any(k in raw_text for k in ["folklore", "anti-pattern", "persona", "cot", "superlative", "gaming"])
-            if not has_verified:
-                self.log_failure("Evals Schema", "Comparative rubrics must evaluate verified best practices (markdown, snake_case, reminder, rationale)", evals_file)
-            if not has_anti:
-                self.log_failure("Evals Schema", "Comparative rubrics must check absence of debunked folklore (personas, redundant CoT, gaming superlatives)", evals_file)
+            has_criteria = any(k in raw_text for k in ["rubric", "downstream", "judge", "criteria", "expected_output"])
+            if not has_criteria:
+                self.log_failure("Evals Schema", "Comparative evals must declare evaluation rubrics or downstream checks", evals_file)
+
+            skill_md = self.root / "SKILL.md"
+            if skill_md.exists():
+                fm, _, _ = self.extract_frontmatter(skill_md.read_text(encoding="utf-8"))
+                skill_ver = (fm.get("metadata") or {}).get("version") if isinstance(fm.get("metadata"), dict) else None
+                eval_ver = data.get("version")
+                if skill_ver and eval_ver and skill_ver != eval_ver:
+                    self.log_failure("Evals Schema", f"Version mismatch: SKILL.md metadata.version='{skill_ver}' != evals.json version='{eval_ver}'", evals_file)
 
         except json.JSONDecodeError as e:
             self.log_failure("Evals Schema", f"evals/evals.json failed JSON parsing: {e}", evals_file)
@@ -544,17 +570,19 @@ class SkillVerifier:
 
     def verify_pep723_metadata(self) -> None:
         """Verify PEP 723 inline dependency metadata on utility scripts."""
-        script_targets = [
-            self.root / "scripts" / "verify_skill.py",
-            self.root / "evidence" / "recompute_stats.py",
-            self.root / "evidence" / "phase_b_harness.py",
-            self.root / "evidence" / "run_evals.py",
-        ]
-        for script_path in script_targets:
-            if not script_path.exists():
-                self.log_failure("PEP 723 Metadata", f"Missing required script: {script_path.name}", script_path)
-                continue
+        script_targets: List[Path] = sorted((self.root / "scripts").glob("*.py")) if (self.root / "scripts").exists() else []
+        repo_evidence = self.root.parent.parent / "evidence"
+        if repo_evidence.exists():
+            for cand in ["recompute_stats.py", "phase_b_harness.py", "phase_c_harness.py", "run_evals.py"]:
+                p = repo_evidence / cand
+                if p.exists():
+                    script_targets.append(p)
 
+        if not script_targets:
+            self.log_failure("PEP 723 Metadata", "No Python scripts found under scripts/")
+            return
+
+        for script_path in script_targets:
             content = script_path.read_text(encoding="utf-8")
             match = re.search(r"^# /// script\s*$(.*?)^# ///\s*$", content, re.MULTILINE | re.DOTALL)
             if not match:

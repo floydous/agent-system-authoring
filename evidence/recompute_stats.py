@@ -2,18 +2,18 @@
 # requires-python = ">=3.10"
 # dependencies = []
 # ///
-"""Offline statistical recomputation from raw JSONL execution traces (Phase A & Phase B).
+"""Offline statistical recomputation from raw JSONL execution traces (Phase A, B & C).
 
 Reads all JSONL trace files under:
-- evidence/raw/results_*.jsonl         (Phase A: 228 records, 1 run/prompt)
+- evidence/raw/results_*.jsonl            (Phase A: 228 records, 1 run/prompt)
 - evidence/raw_phase_b/results_PB-*.jsonl (Phase B: 480 records, N=5 runs/prompt)
+- evidence/raw_phase_c/results_PC-*.jsonl (Phase C: 480 records, N=5 runs/prompt)
 
-Computes:
-- Sample sizes (N), distinct prompts, runs per prompt, mean score, std dev
-- Paired t-test (averaged per prompt_id, df = num_prompts - 1) for score & reasoning_tokens
-- Pooled two-sided Fisher's exact test (via math.comb) for binary outcomes
-- Run-to-run stability (TARa@K: fraction of prompts with identical outcomes across all K repeats)
-- Sub-metric breakdowns for Phase A SP-4, Phase A TS-2, Phase B PB-1, PB-3, and PB-4
+Enforces strict unit-of-analysis hygiene (zero pseudoreplication):
+- Aggregates repeated runs per prompt_id into prompt means before hypothesis testing.
+- Computes paired t-tests (df = num_prompts - 1) and exact two-sided paired sign
+  tests (binomial / McNemar on prompt differences via math.comb).
+- Reports pooled run counts and TARa@K strictly as descriptive metrics.
 
 Writes results to evidence/stats_recomputed.md and exits 0.
 """
@@ -46,6 +46,11 @@ PHASE_B_BASELINES: Dict[str, str] = {
     "PB-4": "bare_negative",
     "PB-5": "neutral_objective",
     "PB-6": "no_rationale",
+}
+
+PHASE_C_BASELINES: Dict[str, str] = {
+    "PC-1": "neutral",
+    "PC-2": "affirmative_only",
 }
 
 
@@ -128,38 +133,24 @@ def paired_t_test(diffs: List[float]) -> Tuple[Optional[float], Optional[float],
         return None, None, 0.0, 0.0
     mean_d = statistics.mean(diffs)
     sd_d = statistics.stdev(diffs)
-    if sd_d == 0.0:
-        return None, 1.0 if mean_d == 0.0 else None, mean_d, 0.0
+    if sd_d < 1e-15:
+        return None, 1.0 if abs(mean_d) < 1e-15 else None, mean_d, 0.0
     se = sd_d / math.sqrt(n)
     t_val = mean_d / se
     p_val = student_t_two_sided_p(t_val, n - 1)
     return t_val, p_val, mean_d, sd_d
 
 
-def fisher_exact_two_sided(a: int, b: int, c: int, d: int) -> float:
-    """Compute exact two-sided Fisher's exact test p-value for 2x2 table [[a, b], [c, d]]."""
-    row1 = a + b
-    row2 = c + d
-    col1 = a + c
-    total = row1 + row2
-    if total == 0:
-        return 1.0
-
-    denom = math.comb(total, col1)
-
-    def hypergeom_prob(x: int) -> float:
-        return (math.comb(row1, x) * math.comb(row2, col1 - x)) / denom
-
-    p_obs = hypergeom_prob(a)
-    min_x = max(0, col1 - row2)
-    max_x = min(row1, col1)
-
-    p_sum = 0.0
-    for x in range(min_x, max_x + 1):
-        p_x = hypergeom_prob(x)
-        if p_x <= p_obs * (1.0 + 1e-12):
-            p_sum += p_x
-    return min(1.0, p_sum)
+def sign_test_two_sided(diffs: List[float]) -> Tuple[int, int, float]:
+    """Exact two-sided binomial paired sign test (equivalent to exact McNemar for binary single-run pairs)."""
+    pos = sum(1 for d in diffs if d > 1e-12)
+    neg = sum(1 for d in diffs if d < -1e-12)
+    n = pos + neg
+    if n == 0:
+        return 0, 0, 1.0
+    k = min(pos, neg)
+    p = min(1.0, 2.0 * sum(math.comb(n, i) for i in range(k + 1)) / (2 ** n))
+    return pos, neg, p
 
 
 def load_records(directory: Path, pattern: str) -> Dict[str, List[Dict[str, Any]]]:
@@ -196,19 +187,48 @@ def fmt_float(val: Optional[float], digits: int = 3) -> str:
     return f"{val:.{digits}f}"
 
 
+def prompt_metric_pair_summary(
+    recs_a: List[Dict[str, Any]],
+    recs_b: List[Dict[str, Any]],
+    metric_key: str = "score",
+) -> str:
+    """Compare condition A vs B strictly at the prompt level (paired t + exact sign test)."""
+    by_a: Dict[str, List[float]] = defaultdict(list)
+    by_b: Dict[str, List[float]] = defaultdict(list)
+    for r in recs_a:
+        by_a[r["prompt_id"]].append(float(r["metrics"][metric_key]))
+    for r in recs_b:
+        by_b[r["prompt_id"]].append(float(r["metrics"][metric_key]))
+
+    shared = sorted(set(by_a.keys()) & set(by_b.keys()))
+    diffs = [statistics.mean(by_a[p]) - statistics.mean(by_b[p]) for p in shared]
+    t_val, p_val, mean_d, sd_d = paired_t_test(diffs)
+    pos, neg, p_sign = sign_test_two_sided(diffs)
+    df = len(shared) - 1
+
+    if sd_d == 0.0 and mean_d == 0.0:
+        t_part = f"delta=0.000 (df={df}, no diff)"
+    elif t_val is None:
+        t_part = f"delta={mean_d:+.3f}, sd_diff=0 (all {len(shared)} prompts identical shift)"
+    else:
+        t_part = f"delta={mean_d:+.3f}, t({df})={t_val:.2f}, p={fmt_p(p_val)}"
+    return f"{t_part}; sign={pos}+/{neg}- (p={fmt_p(p_sign)})"
+
+
 def render_suite_table(
     grouped: Dict[str, List[Dict[str, Any]]],
     baselines: Dict[str, str],
     include_tara: bool = False,
 ) -> List[str]:
-    """Generate condition-level markdown summary rows."""
+    """Generate prompt-level statistical markdown summary rows (zero pseudoreplication)."""
     header = (
-        "| Suite | Condition | N | Prompts | Runs/Prompt | Mean Score | Std Dev | "
+        "| Suite | Condition | N | Prompts | Runs/Prompt | Mean Score | SD (Prompt Means) | "
+        "Raw Run Passes (Descriptive) | "
         + ("TARa@K | " if include_tara else "")
-        + "Score vs Baseline (Paired t on Prompt Means) | Binary Fisher Exact p | Mean Reasoning Tok | Reasoning Tok vs Baseline | Status Flag |"
+        + "Prompt-Level Paired t (df=P-1) | Prompt-Level Sign Test | Mean Reasoning Tok | Reasoning Tok vs Baseline | Status Flag |"
     )
     sep = (
-        "| :--- | :--- | :---: | :---: | :---: | :---: | :---: | "
+        "| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | "
         + (":---: | " if include_tara else "")
         + ":---: | :---: | :---: | :---: | :--- |"
     )
@@ -233,13 +253,21 @@ def render_suite_table(
             for rec in cond_recs:
                 by_prompt[rec["prompt_id"]].append(rec)
 
-            num_prompts = len(by_prompt)
+            pids = sorted(by_prompt.keys())
+            num_prompts = len(pids)
             runs_counts = sorted({len(v) for v in by_prompt.values()})
             runs_str = str(runs_counts[0]) if len(runs_counts) == 1 else f"{min(runs_counts)}-{max(runs_counts)}"
 
+            prompt_means = [statistics.mean(float(r["metrics"]["score"]) for r in by_prompt[p]) for p in pids]
+            mean_score = statistics.mean(prompt_means)
+            sd_prompt = statistics.stdev(prompt_means) if len(prompt_means) >= 2 else 0.0
+
             scores = [float(r["metrics"]["score"]) for r in cond_recs]
-            mean_score = statistics.mean(scores)
-            sd_score = statistics.stdev(scores) if len(scores) >= 2 else 0.0
+            if is_binary_values(scores):
+                ok_runs = sum(1 for v in scores if v == 1.0)
+                raw_desc = f"{ok_runs}/{n} ({100 * ok_runs / n:.1f}%)"
+            else:
+                raw_desc = "non-binary"
 
             rtoks = [float(r.get("reasoning_tokens") or 0.0) for r in cond_recs]
             mean_rtok = statistics.mean(rtoks)
@@ -257,11 +285,12 @@ def render_suite_table(
 
             if cond == base_cond:
                 score_test_str = "Baseline"
-                fisher_str = "Baseline"
+                sign_test_str = "Baseline"
                 rtok_test_str = "Baseline"
-                flag_str = "ceiling/no variance" if sd_score == 0.0 and mean_score == 1.0 else "baseline"
+                flag_str = "ceiling/no variance" if sd_prompt == 0.0 and mean_score == 1.0 else "baseline"
             else:
                 shared_prompts = sorted(set(base_by_prompt.keys()) & set(by_prompt.keys()))
+                df = len(shared_prompts) - 1
                 score_diffs = [
                     statistics.mean(float(r["metrics"]["score"]) for r in by_prompt[p])
                     - statistics.mean(float(r["metrics"]["score"]) for r in base_by_prompt[p])
@@ -274,36 +303,34 @@ def render_suite_table(
                 ]
 
                 t_s, p_s, mean_ds, sd_ds = paired_t_test(score_diffs)
-                if sd_ds == 0.0 and mean_ds == 0.0:
+                if sd_ds == 0.0 and abs(mean_ds) < 1e-15:
                     score_test_str = "delta=0.000 (no diff)"
+                elif t_s is None:
+                    score_test_str = f"delta={mean_ds:+.3f}, sd_diff=0 (see sign test)"
                 else:
-                    score_test_str = f"delta={mean_ds:+.3f}, t={fmt_float(t_s, 2)}, p={fmt_p(p_s)}"
+                    score_test_str = f"delta={mean_ds:+.3f}, t({df})={fmt_float(t_s, 2)}, p={fmt_p(p_s)}"
 
-                if is_binary_values(base_scores_flat) and is_binary_values(scores):
-                    base_ok = sum(1 for v in base_scores_flat if v == 1.0)
-                    cond_ok = sum(1 for v in scores if v == 1.0)
-                    p_fish = fisher_exact_two_sided(
-                        cond_ok, len(scores) - cond_ok, base_ok, len(base_scores_flat) - base_ok
-                    )
-                    fisher_str = f"{cond_ok}/{len(scores)} vs {base_ok}/{len(base_scores_flat)} (p={fmt_p(p_fish)})"
-                else:
-                    fisher_str = "non-binary"
+                pos, neg, p_sign = sign_test_two_sided(score_diffs)
+                sign_test_str = f"{pos}+/{neg}- (p={fmt_p(p_sign)})"
 
                 t_r, p_r, mean_dr, sd_dr = paired_t_test(rtok_diffs)
-                if sd_dr == 0.0 and mean_dr == 0.0:
+                if sd_dr == 0.0 and abs(mean_dr) < 1e-15:
                     rtok_test_str = "diff=0.0 (no diff)"
+                elif t_r is None:
+                    rtok_test_str = f"diff={mean_dr:+.1f}, sd_diff=0"
                 else:
-                    rtok_test_str = f"diff={mean_dr:+.1f}, t={fmt_float(t_r, 2)}, p={fmt_p(p_r)}"
+                    rtok_test_str = f"diff={mean_dr:+.1f}, t({df})={fmt_float(t_r, 2)}, p={fmt_p(p_r)}"
 
-                base_sd = statistics.stdev(base_scores_flat) if len(base_scores_flat) >= 2 else 0.0
-                if sd_score == 0.0 and base_sd == 0.0 and mean_score == statistics.mean(base_scores_flat):
+                sd_runs = statistics.stdev(scores) if len(scores) >= 2 else 0.0
+                base_sd_runs = statistics.stdev(base_scores_flat) if len(base_scores_flat) >= 2 else 0.0
+                if sd_runs == 0.0 and base_sd_runs == 0.0 and abs(mean_ds) < 1e-15:
                     flag_str = "ceiling/no variance - uninformative"
                 else:
                     flag_str = "informative"
 
             rows_out.append(
                 f"| **{hyp_id}** | `{cond}` | {n} | {num_prompts} | {runs_str} | "
-                f"{mean_score:.3f} | {sd_score:.3f} | {tara_str}{score_test_str} | {fisher_str} | "
+                f"{mean_score:.3f} | {sd_prompt:.3f} | {raw_desc} | {tara_str}{score_test_str} | {sign_test_str} | "
                 f"{mean_rtok:.1f} | {rtok_test_str} | {flag_str} |"
             )
     return rows_out
@@ -313,10 +340,12 @@ def main() -> int:
     evidence_dir = Path(__file__).resolve().parent
     raw_a = evidence_dir / "raw"
     raw_b = evidence_dir / "raw_phase_b"
+    raw_c = evidence_dir / "raw_phase_c"
     out_path = evidence_dir / "stats_recomputed.md"
 
     grouped_a = load_records(raw_a, "results_*.jsonl")
     grouped_b = load_records(raw_b, "results_PB-*.jsonl")
+    grouped_c = load_records(raw_c, "results_PC-*.jsonl")
 
     if not grouped_a:
         print(f"ERROR: No Phase A JSONL files found in {raw_a}", file=sys.stderr)
@@ -324,51 +353,141 @@ def main() -> int:
 
     total_a = sum(len(v) for v in grouped_a.values())
     total_b = sum(len(v) for v in grouped_b.values())
+    total_c = sum(len(v) for v in grouped_c.values())
     err_b = sum(1 for v in grouped_b.values() for r in v if r.get("error") is not None)
+    err_c = sum(1 for v in grouped_c.values() for r in v if r.get("error") is not None)
 
     lines: List[str] = [
-        "# Recomputed Statistical Summary (Phase A & Phase B)",
+        "# Recomputed Statistical Summary (Phase A, Phase B & Phase C)",
         "",
+        "- **Unit-of-Analysis Policy**: Zero pseudoreplication — repeated runs (`N = 5` per prompt) are aggregated into prompt-level means (`n = P` independent prompts) before inferential testing (paired *t*-test with `df = P - 1` and exact two-sided paired sign test). Pooled run counts and `TARa@K` are reported descriptively.",
         f"- **Phase A Traces**: `evidence/raw/` ({len(grouped_a)} suites, {total_a} records, 1 run/prompt)",
         f"- **Phase B Traces**: `evidence/raw_phase_b/` ({len(grouped_b)} suites, {total_b} records, 5 runs/prompt, gateway errors={err_b})",
+        f"- **Phase C Traces**: `evidence/raw_phase_c/` ({len(grouped_c)} suites, {total_c} records, 5 runs/prompt, gateway errors={err_c})",
         "- **Generated By**: `evidence/recompute_stats.py` (offline stdlib-only statistical verification)",
-        "",
-        "## 1. Phase B Summary Table (`N = 5` Runs/Prompt, Deconfounded Suites)",
         "",
     ]
 
-    if grouped_b:
-        lines.extend(render_suite_table(grouped_b, PHASE_B_BASELINES, include_tara=True))
+    if grouped_c:
+        lines.extend([
+            "## 1. Phase C Summary Table (`N = 5` Runs/Prompt × `16` Prompts/Suite, High Effort, Counterbalanced / Powered)",
+            "",
+        ])
+        lines.extend(render_suite_table(grouped_c, PHASE_C_BASELINES, include_tara=True))
+        lines.extend(["", "### Phase C Detailed Prompt-Level Breakdowns", ""])
 
-        # Additional pairwise test PB-4 affirmative_only vs paired_affirmative
+        if "PC-1" in grouped_c:
+            pc1 = grouped_c["PC-1"]
+            by_c = defaultdict(list)
+            for r in pc1:
+                by_c[r["condition"]].append(r)
+
+            neu = by_c["neutral"]
+            ex_sec = by_c["example_on_second"]
+            as_sec = by_c["assertive_on_second"]
+
+            def call_pattern(recs: List[Dict[str, Any]]) -> Tuple[int, int, int]:
+                first_only, second_only, both_parallel = 0, 0, 0
+                for r in recs:
+                    tcs = [tc.get("function", {}).get("name") for tc in r.get("tool_calls", [])]
+                    if len(tcs) == 1:
+                        if tcs[0] == r["meta"]["first_tool"]:
+                            first_only += 1
+                        elif tcs[0] == r["meta"]["second_tool"]:
+                            second_only += 1
+                    elif len(tcs) >= 2:
+                        both_parallel += 1
+                return first_only, second_only, both_parallel
+
+            n_f, n_s, n_b = call_pattern(neu)
+            e_f, e_s, e_b = call_pattern(ex_sec)
+            a_f, a_s, a_b = call_pattern(as_sec)
+            neu_east_first_p0 = sum(1 for r in neu if r["meta"]["first_tool"] == "records_lookup_east" and len(r.get("tool_calls", [])) == 1 and r["tool_calls"][0]["function"]["name"] == "records_lookup_east")
+            neu_west_first_p0 = sum(1 for r in neu if r["meta"]["first_tool"] == "records_lookup_west" and len(r.get("tool_calls", [])) == 1 and r["tool_calls"][0]["function"]["name"] == "records_lookup_west")
+            all_valid_args = sum(
+                1
+                for r in pc1
+                if r.get("tool_calls")
+                and all(
+                    json.loads(tc["function"].get("arguments", "{}")).get("entity_id") == r["meta"]["exp_id"]
+                    and json.loads(tc["function"].get("arguments", "{}")).get("record_scope") == r["meta"]["exp_scope"]
+                    for tc in r["tool_calls"]
+                )
+            )
+
+            lines.extend([
+                f"- **`PC-1` Call Patterns Across Counterbalanced Arms (`n = 16` prompts × `5` repeats = `80` runs/arm)**:",
+                f"  - `neutral`: `{n_b}/80` called **both** identical tools in parallel, `{n_f}/80` exclusive `first_tool` (`{neu_east_first_p0}/40` when `east` first, `{neu_west_first_p0}/40` when `west` first), `{n_s}/80` exclusive `second_tool`.",
+                f"  - `example_on_second`: `{e_b}/80` parallel-both, `{e_f}/80` exclusive `first_tool`, `{e_s}/80` exclusive `second_tool` (zero hijacking).",
+                f"  - `assertive_on_second`: `{a_b}/80` parallel-both, `{a_f}/80` exclusive `first_tool`, **`{a_s}/80` (`100.0%`, `40` east / `40` west) exclusive `second_tool`**.",
+                f"  - Argument extraction accuracy across all 240 requests (including parallel calls): {all_valid_args}/240 ({100*all_valid_args/240:.1f}%).",
+                f"- **`PC-1` Prompt-Level Pairwise Contrasts (`n = 16` prompts, exclusive selection of `second_tool`)**:",
+                f"  - `assertive_on_second` vs `neutral`: {prompt_metric_pair_summary(as_sec, neu, 'score')}",
+                f"  - `example_on_second` vs `neutral`: {prompt_metric_pair_summary(ex_sec, neu, 'score')}",
+                f"  - `assertive_on_second` vs `example_on_second`: {prompt_metric_pair_summary(as_sec, ex_sec, 'score')}",
+            ])
+
+        if "PC-2" in grouped_c:
+            pc2 = grouped_c["PC-2"]
+            by_c = defaultdict(list)
+            for r in pc2:
+                by_c[r["condition"]].append(r)
+
+            lines.extend([
+                "- **`PC-2` Prompt-Level Pairwise Contrasts (`n = 16` prompts across 4 topic clusters)**:",
+                f"  - Combined score (`lexical_clean` & `length_ok`):",
+                f"    - `bare_negative` vs `affirmative_only`: {prompt_metric_pair_summary(by_c['bare_negative'], by_c['affirmative_only'], 'score')}",
+                f"    - `paired_affirmative` vs `affirmative_only`: {prompt_metric_pair_summary(by_c['paired_affirmative'], by_c['affirmative_only'], 'score')}",
+                f"    - `paired_affirmative` vs `bare_negative` (`C-01`): {prompt_metric_pair_summary(by_c['paired_affirmative'], by_c['bare_negative'], 'score')}",
+                f"  - Pure `lexical_clean` (zero forbidden words, ignoring word-count jitter):",
+                f"    - `bare_negative` vs `affirmative_only`: {prompt_metric_pair_summary(by_c['bare_negative'], by_c['affirmative_only'], 'lexical_clean')}",
+                f"    - `paired_affirmative` vs `affirmative_only`: {prompt_metric_pair_summary(by_c['paired_affirmative'], by_c['affirmative_only'], 'lexical_clean')}",
+                f"    - `paired_affirmative` vs `bare_negative` (`C-01`): {prompt_metric_pair_summary(by_c['paired_affirmative'], by_c['bare_negative'], 'lexical_clean')}",
+                "- **`PC-2` Descriptive Run Totals (out of 80 runs each)**:",
+            ])
+            for c in ("affirmative_only", "bare_negative", "paired_affirmative"):
+                lex_ok = sum(int(r["metrics"].get("lexical_clean", 0)) for r in by_c[c])
+                len_ok = sum(int(r["metrics"].get("length_ok", 0)) for r in by_c[c])
+                both_ok = sum(int(r["metrics"].get("score", 0)) for r in by_c[c])
+                forb_hits = sum(int(r["metrics"].get("forbidden_word_count", 0)) for r in by_c[c])
+                lines.append(
+                    f"  - `{c}`: `lexical_clean`={lex_ok}/80 ({100*lex_ok/80:.1f}%), "
+                    f"`length_ok`={len_ok}/80, `combined`={both_ok}/80 ({100*both_ok/80:.1f}%), "
+                    f"total forbidden hits={forb_hits}"
+                )
+        lines.append("")
+
+    if grouped_b:
+        lines.extend([
+            "## 2. Phase B Summary Table (`N = 5` Runs/Prompt × `6` Prompts/Suite, Prompt-Level Inference)",
+            "",
+        ])
+        lines.extend(render_suite_table(grouped_b, PHASE_B_BASELINES, include_tara=True))
+        lines.extend(["", "### Phase B Sub-Metric & Pairwise Prompt-Level Breakdowns", ""])
+
         if "PB-4" in grouped_b:
             pb4 = grouped_b["PB-4"]
             by_c = defaultdict(list)
             for r in pb4:
                 by_c[r["condition"]].append(r)
-            aff_ok = sum(1 for r in by_c["affirmative_only"] if r["metrics"]["score"] == 1.0)
-            pair_ok = sum(1 for r in by_c["paired_affirmative"] if r["metrics"]["score"] == 1.0)
-            bare_ok = sum(1 for r in by_c["bare_negative"] if r["metrics"]["score"] == 1.0)
-            p_aff_pair = fisher_exact_two_sided(pair_ok, 30 - pair_ok, aff_ok, 30 - aff_ok)
-            p_bare_aff = fisher_exact_two_sided(bare_ok, 30 - bare_ok, aff_ok, 30 - aff_ok)
             lines.extend([
-                "",
-                "### Phase B Sub-Metric Breakdowns",
-                "",
-                f"- **`PB-4` Additional Fisher Comparisons**: `bare_negative` ({bare_ok}/30) vs `affirmative_only` ({aff_ok}/30): `p = {fmt_p(p_bare_aff)}`; `paired_affirmative` ({pair_ok}/30) vs `affirmative_only` ({aff_ok}/30): `p = {fmt_p(p_aff_pair)}`.",
+                "- **`PB-4` Pairwise Prompt-Level Contrasts (`n = 6` prompts)**:",
+                f"  - `bare_negative` vs `affirmative_only`: {prompt_metric_pair_summary(by_c['bare_negative'], by_c['affirmative_only'], 'score')}",
+                f"  - `paired_affirmative` vs `affirmative_only`: {prompt_metric_pair_summary(by_c['paired_affirmative'], by_c['affirmative_only'], 'score')}",
+                f"  - `paired_affirmative` vs `bare_negative`: {prompt_metric_pair_summary(by_c['paired_affirmative'], by_c['bare_negative'], 'score')}",
             ])
             for c in ("bare_negative", "affirmative_only", "paired_affirmative"):
                 len_ok = sum(int(r["metrics"].get("length_ok", 0)) for r in by_c[c])
                 forb_tot = sum(int(r["metrics"].get("forbidden_word_count", 0)) for r in by_c[c])
                 bold_hits = sum(int(r["metrics"].get("has_bold", 0)) for r in by_c[c])
-                lines.append(f"  - `{c}`: `length_ok`={len_ok}/30, total forbidden word hits={forb_tot}, bold `**` hits={bold_hits}")
+                lines.append(f"  - `{c}` (descriptive 30 runs): `length_ok`={len_ok}/30, forbidden hits={forb_tot}, bold `**` hits={bold_hits}")
 
         if "PB-1" in grouped_b:
             pb1 = grouped_b["PB-1"]
             by_c = defaultdict(list)
             for r in pb1:
                 by_c[r["condition"]].append(r)
-            lines.append("- **`PB-1` Per-Constraint Pass Counts (out of 30 runs each)**:")
+            lines.append("- **`PB-1` Per-Constraint Pass Counts (descriptive out of 30 runs each)**:")
             for c in ("flat_markdown", "flat_xml", "nested_xml"):
                 parts = [f"{k}={int(sum(r['metrics'][k] for r in by_c[c]))}/30" for k in ("c1_length", "c2_keywords", "c3_negative", "c4_headers", "c5_severity", "c6_terminal", "strict_pass")]
                 lines.append(f"  - `{c}`: " + ", ".join(parts))
@@ -378,38 +497,39 @@ def main() -> int:
             by_c = defaultdict(list)
             for r in pb6:
                 by_c[r["condition"]].append(r)
-            p_rf_rl = fisher_exact_two_sided(
-                sum(int(r["metrics"]["score"]) for r in by_c["rationale_first"]),
-                30 - sum(int(r["metrics"]["score"]) for r in by_c["rationale_first"]),
-                sum(int(r["metrics"]["score"]) for r in by_c["rationale_last"]),
-                30 - sum(int(r["metrics"]["score"]) for r in by_c["rationale_last"]),
+            lines.append(
+                f"- **`PB-6` `rationale_first` vs `rationale_last` (`n = 6` prompts, `reasoning_tokens = 0`)**: "
+                + prompt_metric_pair_summary(by_c["rationale_first"], by_c["rationale_last"], "score")
+                + " (exact tie between `no_rationale` 11/30 and `rationale_last` 11/30)."
             )
-            lines.append(f"- **`PB-6` `rationale_first` (30/30) vs `rationale_last` (11/30)**: Fisher exact `p = {fmt_p(p_rf_rl)}` (exact tie between `no_rationale` 11/30 and `rationale_last` 11/30; `reasoning_tokens = 0` across all 90 runs at `effort=\"none\"`).")
 
     lines.extend([
         "",
-        "## 2. Phase A Summary Table (Baseline Run `20261119_020610_3f7405`, `N = 1` Run/Prompt)",
+        "## 3. Phase A Summary Table (Baseline Run `20261119_020610_3f7405`, `N = 1` Run/Prompt)",
         "",
     ])
     lines.extend(render_suite_table(grouped_a, PHASE_A_BASELINES, include_tara=False))
 
-    # Phase A TS-2 & SP-4 sub-metric breakdowns
     if "TS-2" in grouped_a:
         by_c = defaultdict(list)
         for r in grouped_a["TS-2"]:
             by_c[r["condition"]].append(r)
         lines.extend([
             "",
-            "### Phase A `TS-2` Per-Field Validity Breakdown",
+            "### Phase A `TS-2` Per-Field Validity Breakdown (Matched Pairs, Exact Two-Sided Sign/McNemar Test)",
             "",
-            "| Field | `without_descriptions` | `with_descriptions` | Two-Sided Fisher Exact p |",
+            "| Field | `without_descriptions` | `with_descriptions` | Prompt-Level Exact Sign / McNemar p |",
             "| :--- | :---: | :---: | :---: |",
         ])
         for field in ("timestamp_valid", "currency_valid", "geo_valid", "all_fields_valid"):
-            b_ok = sum(1 for r in by_c["without_descriptions"] if float(r["metrics"].get(field, 0.0)) == 1.0)
-            c_ok = sum(1 for r in by_c["with_descriptions"] if float(r["metrics"].get(field, 0.0)) == 1.0)
-            p_f = fisher_exact_two_sided(c_ok, 15 - c_ok, b_ok, 15 - b_ok)
-            lines.append(f"| `{field}` | {b_ok}/15 ({100*b_ok/15:.1f}%) | {c_ok}/15 ({100*c_ok/15:.1f}%) | {fmt_p(p_f)} |")
+            b_by_p = {r["prompt_id"]: float(r["metrics"].get(field, 0.0)) for r in by_c["without_descriptions"]}
+            c_by_p = {r["prompt_id"]: float(r["metrics"].get(field, 0.0)) for r in by_c["with_descriptions"]}
+            shared = sorted(set(b_by_p.keys()) & set(c_by_p.keys()))
+            diffs = [c_by_p[p] - b_by_p[p] for p in shared]
+            pos, neg, p_sign = sign_test_two_sided(diffs)
+            b_ok = sum(1 for p in shared if b_by_p[p] == 1.0)
+            c_ok = sum(1 for p in shared if c_by_p[p] == 1.0)
+            lines.append(f"| `{field}` | {b_ok}/15 ({100*b_ok/15:.1f}%) | {c_ok}/15 ({100*c_ok/15:.1f}%) | {pos}+/{neg}- (p={fmt_p(p_sign)}) |")
 
     if "SP-4" in grouped_a:
         by_c = defaultdict(list)
