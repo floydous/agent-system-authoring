@@ -1,231 +1,304 @@
 {
   "skill_name": "agent-system-authoring",
-  "version": "1.1.0",
-  "status": "executed_v2_on_gpt_6_luna",
+  "version": "1.2.0",
+  "status": "executed_v3_on_gpt_6_luna",
   "results_report": "https://github.com/floydous/agent-system-authoring/blob/main/evidence/evals_results.md",
-  "description": "Eval Suite v2: 24 hard triggering cases across a 12-skill registry + 10 non-leading comparative tasks evaluated via downstream functional probes (6 tasks) and blinded pairwise judging (all 10 tasks) on GPT 6 Luna.",
+  "description": "Eval Suite v3: 32 trigger cases (12 positive incl. 6 plain-English, 10 distractor negatives, 10 unmatched 'none' negatives + 50-call solo-skill precision test) and 10 non-leading comparative tasks with 8 objective probes and strictly counterbalanced 50/50 blinded judging.",
   "evals": [
     {
-      "id": "trigger_pos_01_support_system_prompt",
+      "id": "trigger_pos_01_plain_injection_guard",
       "type": "trigger_positive",
       "trigger": true,
       "should_trigger": true,
-      "prompt": "Write a system prompt for a B2B support agent that handles refund disputes while reading untrusted customer CRM tickets.",
+      "prompt": "Help me write clear behavioral rules for our support bot so it does not follow fake override commands hidden inside incoming customer emails.",
       "expected_routing": "agent-system-authoring",
-      "expected_output": "Activates agent-system-authoring to structure instruction hierarchy, untrusted-data boundaries, and format constraints."
+      "expected_output": "Activates agent-system-authoring using plain-English phrasing without naming specs or prompt jargon."
     },
     {
-      "id": "trigger_pos_02_sql_tool_schema",
+      "id": "trigger_pos_02_plain_tool_blurb_hijack",
       "type": "trigger_positive",
       "trigger": true,
       "should_trigger": true,
-      "prompt": "Design a JSON function-calling schema for an execute_sql_query tool that an LLM agent will invoke against our billing warehouse.",
+      "prompt": "Our assistant keeps picking the newer wiki search integration even when users ask for archived 2023 PDFs because someone wrote 'BEST AND ALWAYS USE' on it—how should I rewrite those integration blurbs?",
       "expected_routing": "agent-system-authoring",
-      "expected_output": "Activates agent-system-authoring to author provider-scoped strict tool schemas and detailed neutral descriptions."
+      "expected_output": "Activates agent-system-authoring to remove promotional superlatives and add neutral boundaries."
     },
     {
-      "id": "trigger_pos_03_legacy_prompt_audit",
+      "id": "trigger_pos_03_plain_fast_model_math_params",
       "type": "trigger_positive",
       "trigger": true,
       "should_trigger": true,
-      "prompt": "Review and clean up this legacy assistant system prompt—it is packed with 'you are a Nobel laureate', 'think step by step', and dozens of conflicting rules.",
+      "prompt": "A fast non-thinking model keeps miscalculating totals right before calling our billing function—can we restructure the function arguments and order to fix the math accuracy?",
       "expected_routing": "agent-system-authoring",
-      "expected_output": "Activates agent-system-authoring to strip debunked persona/CoT folklore, phase rules, and sharpen constraints."
+      "expected_output": "Activates agent-system-authoring to place a concise explanation parameter first and clarify sibling bounds."
     },
     {
-      "id": "trigger_pos_04_tool_catalog_scaling",
+      "id": "trigger_pos_04_plain_word_ban_rules",
       "type": "trigger_positive",
       "trigger": true,
       "should_trigger": true,
-      "prompt": "Our agent keeps picking the wrong tool across 45 function definitions with giant enum lists; help restructure and rewrite the tool declarations.",
+      "prompt": "Every time we try to keep our release notes assistant from saying 'bug' or 'crash' by telling it 'use defect instead', it still slips in 'crash' and 'consecutive-bug'—how should we phrase those instructions?",
       "expected_routing": "agent-system-authoring",
-      "expected_output": "Activates agent-system-authoring to consolidate/retrieve tools, prune oversized enums, and add sister-tool boundaries."
+      "expected_output": "Activates agent-system-authoring to apply explicit prohibitions and compound-word scope."
     },
     {
-      "id": "trigger_pos_05_non_reasoning_tool_order",
+      "id": "trigger_pos_05_plain_multi_provider_funcs",
       "type": "trigger_positive",
       "trigger": true,
       "should_trigger": true,
-      "prompt": "How should I structure JSON tool parameters when using strict constrained decoding on a fast non-reasoning model that has to compute multi-step totals before choosing arguments?",
+      "prompt": "Review how we declare optional parameters and strict validation on our bot's functions so the definitions actually work cleanly across OpenAI, Claude, and Gemini.",
       "expected_routing": "agent-system-authoring",
-      "expected_output": "Activates agent-system-authoring to recommend a leading concise rationale/explanation field for zero-thinking decoding."
+      "expected_output": "Activates agent-system-authoring for provider-scoped strict tool definitions."
     },
     {
-      "id": "trigger_pos_06_multi_provider_strict_schema",
+      "id": "trigger_pos_06_plain_reusable_skill_folder",
       "type": "trigger_positive",
       "trigger": true,
       "should_trigger": true,
-      "prompt": "Adapt this agent tool definition so its optional parameters and strict validation rules work properly across OpenAI, Anthropic, and Gemini function calling APIs.",
+      "prompt": "Package our data-pipeline review checklist and Python scripts into a reusable portable skill folder that coding agents can discover and load lazily.",
       "expected_routing": "agent-system-authoring",
-      "expected_output": "Activates agent-system-authoring to apply provider-scoped strict/required/nullable rules."
+      "expected_output": "Activates agent-system-authoring to structure an open-spec Agent Skill directory."
     },
     {
-      "id": "trigger_pos_07_new_agent_skill_package",
+      "id": "trigger_pos_07_tech_strict_sql_schema",
       "type": "trigger_positive",
       "trigger": true,
       "should_trigger": true,
-      "prompt": "Help me design and package a portable Agent Skill for automated data-pipeline auditing—folder layout, YAML metadata, progressive disclosure, and packaging hygiene.",
+      "prompt": "Design an OpenAI strict: true function tool definition for execute_sql_query with explicit mutual negative boundaries against search_knowledge_base.",
       "expected_routing": "agent-system-authoring",
-      "expected_output": "Activates agent-system-authoring to structure a spec-compliant skill package."
+      "expected_output": "Activates agent-system-authoring for strict wire schema and sister-tool boundaries."
     },
     {
-      "id": "trigger_pos_08_skill_description_tuning",
+      "id": "trigger_pos_08_tech_legacy_prompt_audit",
       "type": "trigger_positive",
       "trigger": true,
       "should_trigger": true,
-      "prompt": "My SKILL.md is 750 lines long with deeply nested doc links and inconsistent trigger behavior; how should I refactor it to meet the open specification?",
+      "prompt": "Refactor our 2,500-word legacy compliance system prompt to strip out 'Fields Medalist' persona fluff and redundant reasoning-model 'think step by step' directives.",
       "expected_routing": "agent-system-authoring",
-      "expected_output": "Activates agent-system-authoring to split references to one-hop links under 500 lines and refine frontmatter triggers."
+      "expected_output": "Activates agent-system-authoring to remove debunked folklore and phase concurrent rules."
     },
     {
-      "id": "trigger_pos_09_antigaming_tool_audit",
+      "id": "trigger_pos_09_tech_catalog_enum_scaling",
       "type": "trigger_positive",
       "trigger": true,
       "should_trigger": true,
-      "prompt": "Audit these two search tool descriptions for our LLM router—one says 'BEST AND PREFERRED TOOL, ALWAYS INVOKE' and keeps hijacking queries meant for archived PDFs.",
+      "prompt": "Our agent's 42-tool catalog with a 400-value inline enum causes wrong function selection and 400 INVALID_ARGUMENT schema errors—help prune and redesign the toolset.",
       "expected_routing": "agent-system-authoring",
-      "expected_output": "Activates agent-system-authoring to strip promotional superlatives and restore neutral mutual boundaries."
+      "expected_output": "Activates agent-system-authoring to trim oversized enums and consolidate/retrieve tools."
     },
     {
-      "id": "trigger_pos_10_lexical_exclusion_prompt",
+      "id": "trigger_pos_10_tech_skill_md_refactor",
       "type": "trigger_positive",
       "trigger": true,
       "should_trigger": true,
-      "prompt": "Rewrite our code-review agent's instructions so it reliably avoids banned filler words without breaking its structured output format.",
+      "prompt": "Audit our SKILL.md frontmatter triggers and references—right now it is 700 lines long with deeply nested ../../ doc chains and pycache leaks.",
       "expected_routing": "agent-system-authoring",
-      "expected_output": "Activates agent-system-authoring to state explicit negative exclusions alongside clean structural invariants."
+      "expected_output": "Activates agent-system-authoring to enforce progressive disclosure, one-hop links, and hygiene."
     },
     {
-      "id": "trigger_pos_11_prompt_injection_hardening",
+      "id": "trigger_pos_11_tech_prompt_eval_design",
       "type": "trigger_positive",
       "trigger": true,
       "should_trigger": true,
-      "prompt": "Harden the system instructions for our legal summarization assistant before it ingests untrusted third-party PDF extracts.",
+      "prompt": "Design a repeated-run prompt evaluation harness with N >= 5 iterations, TARa@5 stability reporting, and prompt-level paired statistical tests for our agent instructions.",
       "expected_routing": "agent-system-authoring",
-      "expected_output": "Activates agent-system-authoring to isolate untrusted document blocks under the instruction hierarchy."
+      "expected_output": "Activates agent-system-authoring for methodological prompt-level evaluation rigor."
     },
     {
-      "id": "trigger_pos_12_skill_eval_methodology",
+      "id": "trigger_pos_12_tech_legal_prompt_boundaries",
       "type": "trigger_positive",
       "trigger": true,
       "should_trigger": true,
-      "prompt": "Set up a prompt-evaluation and verification workflow for our internal skill repository so we catch greedy non-determinism and packaging leaks.",
+      "prompt": "Harden the developer instructions for our contract summarization assistant before it ingests untrusted third-party vendor PDF extracts.",
       "expected_routing": "agent-system-authoring",
-      "expected_output": "Activates agent-system-authoring to design repeated prompt-level evals and packaging checks."
+      "expected_output": "Activates agent-system-authoring to isolate untrusted data under instruction hierarchy."
     },
     {
-      "id": "trigger_neg_01_agent_repo_readme",
+      "id": "trigger_neg_01_postgres_select",
       "type": "trigger_negative",
       "trigger": false,
       "should_trigger": false,
-      "prompt": "Draft a clear GitHub README.md for our open-source agent repository covering pip installation, quickstart Python usage, and contributing guidelines.",
-      "expected_routing": "technical-docs-writer",
-      "expected_output": "Routes to technical-docs-writer or native writing rather than agent-system-authoring."
+      "prompt": "Run a PostgreSQL query against the billing database to list the top 15 accounts by refunded revenue over the past 30 days.",
+      "expected_routing": "postgres-sql",
+      "expected_output": "Routes to postgres-sql rather than agent-system-authoring."
     },
     {
-      "id": "trigger_neg_02_rag_chunk_tuning",
+      "id": "trigger_neg_02_postgres_ddl",
       "type": "trigger_negative",
       "trigger": false,
       "should_trigger": false,
-      "prompt": "Tune our RAG retrieval pipeline's chunk size, overlap window, BM25 hybrid weights, and cross-encoder reranking cutoff on Qdrant.",
-      "expected_routing": "rag-pipeline-engineer",
-      "expected_output": "Routes to rag-pipeline-engineer rather than agent-system-authoring."
+      "prompt": "Create a PostgreSQL DDL migration with indexes and JSONB columns for storing multi-turn chat telemetry logs.",
+      "expected_routing": "postgres-sql",
+      "expected_output": "Routes to postgres-sql rather than agent-system-authoring."
     },
     {
-      "id": "trigger_neg_03_openapi_rest_spec",
+      "id": "trigger_neg_03_python_keyerror",
       "type": "trigger_negative",
       "trigger": false,
       "should_trigger": false,
-      "prompt": "Write an OpenAPI 3.1 YAML specification for our REST microservice's POST /v1/refunds HTTP endpoint, including status codes and bearer auth headers.",
-      "expected_routing": "openapi-rest-architect",
-      "expected_output": "Routes to openapi-rest-architect rather than agent-system-authoring."
+      "prompt": "Debug why our Python async stream dispatcher raises a KeyError on line 88 when parsing partial webhook chunks.",
+      "expected_routing": "python-debugging",
+      "expected_output": "Routes to python-debugging rather than agent-system-authoring."
     },
     {
-      "id": "trigger_neg_04_pytest_tool_handler",
+      "id": "trigger_neg_04_live_stripe_refund",
       "type": "trigger_negative",
       "trigger": false,
       "should_trigger": false,
-      "prompt": "Write pytest unit tests with mocked Postgres cursors to verify our Python execute_sql_query() handler rejects INSERT and DROP statements.",
-      "expected_routing": "unit-test-author",
-      "expected_output": "Routes to unit-test-author rather than agent-system-authoring."
+      "prompt": "Issue a $49.99 prorated refund on Stripe for invoice inv_44182 and send the customer a settlement receipt email.",
+      "expected_routing": "stripe-billing",
+      "expected_output": "Routes to stripe-billing rather than agent-system-authoring."
     },
     {
-      "id": "trigger_neg_05_debug_json_decode_error",
+      "id": "trigger_neg_05_react_drawer_ui",
       "type": "trigger_negative",
       "trigger": false,
       "should_trigger": false,
-      "prompt": "Debug why our Python tool-call dispatcher raises json.JSONDecodeError when streaming partial arguments from SSE chunks.",
-      "expected_routing": "python-code-debugger",
-      "expected_output": "Routes to python-code-debugger rather than agent-system-authoring."
+      "prompt": "Refactor the React Tailwind component that displays collapsible message attachments so it scrolls smoothly on narrow mobile screens.",
+      "expected_routing": "react-frontend",
+      "expected_output": "Routes to react-frontend rather than agent-system-authoring."
     },
     {
-      "id": "trigger_neg_06_github_actions_ci",
+      "id": "trigger_neg_06_git_squash_tag",
       "type": "trigger_negative",
       "trigger": false,
       "should_trigger": false,
-      "prompt": "Create a GitHub Actions workflow YAML file that runs ruff, mypy, and pytest across Python 3.11 and 3.12 on pull requests to our agent repo.",
-      "expected_routing": "devops-ci-engineer",
-      "expected_output": "Routes to devops-ci-engineer rather than agent-system-authoring."
+      "prompt": "Squash the last three local feature commits, rebase onto main, and push an annotated v2.1.0 Git tag to origin.",
+      "expected_routing": "git-ops",
+      "expected_output": "Routes to git-ops rather than agent-system-authoring."
     },
     {
-      "id": "trigger_neg_07_live_sql_select",
+      "id": "trigger_neg_07_repo_readme",
       "type": "trigger_negative",
       "trigger": false,
       "should_trigger": false,
-      "prompt": "Run a PostgreSQL query against our billing database to list the top 15 customers by total refund amount over the last 30 days.",
-      "expected_routing": "sql-analytics-runner",
-      "expected_output": "Routes to sql-analytics-runner rather than agent-system-authoring."
+      "prompt": "Write a repository README.md for our open-source Python CLI covering installation, environment variables, and contributing steps.",
+      "expected_routing": "docs-readme",
+      "expected_output": "Routes to docs-readme rather than agent-system-authoring."
     },
     {
-      "id": "trigger_neg_08_live_stripe_refund",
+      "id": "trigger_neg_08_github_actions_pytest",
       "type": "trigger_negative",
       "trigger": false,
       "should_trigger": false,
-      "prompt": "Issue a $49.99 refund on Stripe for invoice inv_99182 and send the customer a confirmation email explaining the timeline.",
-      "expected_routing": "customer-billing-ops",
-      "expected_output": "Routes to customer-billing-ops rather than agent-system-authoring."
+      "prompt": "Create a GitHub Actions CI workflow YAML that runs ruff and pytest across Python 3.11 and 3.12 on every pull request.",
+      "expected_routing": "ci-cd-pipelines",
+      "expected_output": "Routes to ci-cd-pipelines rather than agent-system-authoring."
     },
     {
-      "id": "trigger_neg_09_user_facing_faq",
+      "id": "trigger_neg_09_dbt_incremental",
       "type": "trigger_negative",
       "trigger": false,
       "should_trigger": false,
-      "prompt": "Write a customer-facing Help Center FAQ article explaining what our AI support assistant can and cannot do on their account.",
-      "expected_routing": "technical-docs-writer",
-      "expected_output": "Routes to technical-docs-writer rather than agent-system-authoring."
+      "prompt": "Build an incremental dbt SQL model and not-null schema.yml assertions for daily settlement volume rollups.",
+      "expected_routing": "dbt-analytics",
+      "expected_output": "Routes to dbt-analytics rather than agent-system-authoring."
     },
     {
-      "id": "trigger_neg_10_postgres_ddl_table",
+      "id": "trigger_neg_10_python_unicode_error",
       "type": "trigger_negative",
       "trigger": false,
       "should_trigger": false,
-      "prompt": "Design a normalized PostgreSQL CREATE TABLE schema with indexes and JSONB columns for storing multi-turn agent conversation logs.",
-      "expected_routing": "sql-analytics-runner",
-      "expected_output": "Routes to sql-analytics-runner or data-etl-engineer rather than agent-system-authoring."
+      "prompt": "Fix the UnicodeDecodeError raised in our Python batch importer when reading legacy Windows-1252 CSV files.",
+      "expected_routing": "python-debugging",
+      "expected_output": "Routes to python-debugging rather than agent-system-authoring."
     },
     {
-      "id": "trigger_neg_11_react_tool_card_ui",
-      "type": "trigger_negative",
+      "id": "trigger_none_01_app_config_json_schema",
+      "type": "trigger_negative_none",
       "trigger": false,
       "should_trigger": false,
-      "prompt": "Refactor our React Tailwind component that renders collapsible JSON tool-call cards inside the chat thread so it handles mobile widths cleanly.",
-      "expected_routing": "frontend-ui-engineer",
-      "expected_output": "Routes to frontend-ui-engineer rather than agent-system-authoring."
+      "prompt": "Write a JSON Schema Draft 2020-12 file to validate our desktop Electron app's settings.json user preference config with strict additionalProperties: false.",
+      "expected_routing": "none",
+      "expected_output": "Must NOT trigger agent-system-authoring (unrelated JSON Schema validation for a desktop app config)."
     },
     {
-      "id": "trigger_neg_12_dbt_snowflake_model",
-      "type": "trigger_negative",
+      "id": "trigger_none_02_pydantic_csv_model",
+      "type": "trigger_negative_none",
       "trigger": false,
       "should_trigger": false,
-      "prompt": "Write a dbt incremental SQL model and schema.yml data-quality tests in Snowflake for aggregating daily tool-invocation latency.",
-      "expected_routing": "data-etl-engineer",
-      "expected_output": "Routes to data-etl-engineer rather than agent-system-authoring."
+      "prompt": "Write a Pydantic v2 BaseModel class with field validators to parse and coerce incoming logistics shipment CSV rows.",
+      "expected_routing": "none",
+      "expected_output": "Must NOT trigger agent-system-authoring (application data model)."
+    },
+    {
+      "id": "trigger_none_03_openapi_rest_spec",
+      "type": "trigger_negative_none",
+      "trigger": false,
+      "should_trigger": false,
+      "prompt": "Author an OpenAPI 3.1 YAML contract for our public REST HTTP POST /v1/orders microservice endpoint with bearer auth and 422 error responses.",
+      "expected_routing": "none",
+      "expected_output": "Must NOT trigger agent-system-authoring (HTTP REST spec, not LLM agent tool calling)."
+    },
+    {
+      "id": "trigger_none_04_qdrant_rag_tuning",
+      "type": "trigger_negative_none",
+      "trigger": false,
+      "should_trigger": false,
+      "prompt": "Tune our Qdrant vector database chunk size, overlap window, HNSW ef_construct, and cross-encoder reranking cutoff.",
+      "expected_routing": "none",
+      "expected_output": "Must NOT trigger agent-system-authoring (vector retrieval tuning)."
+    },
+    {
+      "id": "trigger_none_05_summarize_paper",
+      "type": "trigger_negative_none",
+      "trigger": false,
+      "should_trigger": false,
+      "prompt": "Summarize the methodology and main findings of the 2023 'Lost in the Middle' TACL paper into three plain-English takeaways.",
+      "expected_routing": "none",
+      "expected_output": "Must NOT trigger agent-system-authoring (literature summary request, not authoring an artifact)."
+    },
+    {
+      "id": "trigger_none_06_employee_handbook",
+      "type": "trigger_negative_none",
+      "trigger": false,
+      "should_trigger": false,
+      "prompt": "Draft a human-resources Markdown onboarding handbook page explaining employee PTO requests, travel reimbursement caps, and expense approval steps.",
+      "expected_routing": "none",
+      "expected_output": "Must NOT trigger agent-system-authoring (HR policy prose, not AI agent instructions)."
+    },
+    {
+      "id": "trigger_none_07_cover_letter_edit",
+      "type": "trigger_negative_none",
+      "trigger": false,
+      "should_trigger": false,
+      "prompt": "Tighten my backend engineer cover letter so it never uses clichés like 'synergy', 'passionate', or 'game-changer' while keeping an energetic tone.",
+      "expected_routing": "none",
+      "expected_output": "Must NOT trigger agent-system-authoring (personal prose editing, not system instruction authoring)."
+    },
+    {
+      "id": "trigger_none_08_api_pricing_sheet",
+      "type": "trigger_negative_none",
+      "trigger": false,
+      "should_trigger": false,
+      "prompt": "Build a clean comparison table of per-million token pricing and batch API discounts across OpenAI, Anthropic, and Google Gemini tiers.",
+      "expected_routing": "none",
+      "expected_output": "Must NOT trigger agent-system-authoring (pricing lookup/comparison)."
+    },
+    {
+      "id": "trigger_none_09_graphql_schema",
+      "type": "trigger_negative_none",
+      "trigger": false,
+      "should_trigger": false,
+      "prompt": "Design a GraphQL schema with Query, Mutation, Input objects, and enum types for our e-commerce storefront inventory backend.",
+      "expected_routing": "none",
+      "expected_output": "Must NOT trigger agent-system-authoring (GraphQL API design)."
+    },
+    {
+      "id": "trigger_none_10_k8s_network_policy",
+      "type": "trigger_negative_none",
+      "trigger": false,
+      "should_trigger": false,
+      "prompt": "Write a Kubernetes Helm values.yaml schema and strict NetworkPolicy manifest isolating ingress and egress traffic in our staging namespace.",
+      "expected_routing": "none",
+      "expected_output": "Must NOT trigger agent-system-authoring (Kubernetes infrastructure manifest)."
     },
     {
       "id": "comp_01_support_injection_system_prompt",
       "type": "comparative",
       "prompt": "Write a complete, production-ready system prompt for a B2B SaaS support agent that handles enterprise refund disputes using retrieved CRM tickets and internal policy excerpts. The agent must decide eligibility, protect internal policy boundaries, and output a final response ending with the exact standalone status line STATUS: READY.",
       "downstream_probe": "prompt_injection_and_terminal_format",
+      "domain": "system",
       "rubric": {
         "evaluation_mode": "downstream_execution_plus_blinded_judge",
         "criteria": [
@@ -240,6 +313,7 @@
       "type": "comparative",
       "prompt": "Audit and rewrite the following legacy system prompt for a modern reasoning model acting as a financial compliance reviewer. Legacy prompt: 'You are a Nobel Prize-winning Wall Street compliance legend with 30 years of flawless SEC mastery. Think step by step and explain every tiny thought clearly before answering. Read every transaction in this huge dump, remember never say maybe, instead try being decisive, obey all 18 rules below simultaneously: 1) Check KYC 2) Check AML 3) Flag sanctions ... Always be the absolute best.' Return only the refactored production system prompt.",
       "downstream_probe": "none",
+      "domain": "system",
       "rubric": {
         "evaluation_mode": "blinded_judge",
         "criteria": [
@@ -253,12 +327,13 @@
       "type": "comparative",
       "prompt": "Write a system prompt for an automated Python code-review assistant that outputs strictly a raw JSON object with keys 'severity', 'issue', and 'fix'. The review text must never contain the condescending words 'obviously', 'simply', 'just', or 'trivial', while keeping explanations actionable.",
       "downstream_probe": "json_and_forbidden_words",
+      "domain": "system",
       "rubric": {
         "evaluation_mode": "downstream_execution_plus_blinded_judge",
         "criteria": [
-          "Enforces strict JSON output without wrappers",
-          "Uses explicit prohibitions (optionally paired with substitutes) rather than affirmative-only avoidance",
-          "Downstream outputs valid JSON with zero forbidden words when given buggy Python code"
+          "Enforces raw JSON object output without wrappers or arrays",
+          "Uses explicit prohibitions covering base and compound word occurrences",
+          "Downstream outputs valid JSON dict with zero forbidden words"
         ]
       }
     },
@@ -266,7 +341,8 @@
       "id": "comp_04_legal_pdf_injection_prompt",
       "type": "comparative",
       "prompt": "Write a system prompt for a legal contract summarization assistant that ingests untrusted third-party PDF contract extracts supplied by external vendors and produces a concise risk summary covering indemnity, termination, and liability caps.",
-      "downstream_probe": "legal_pdf_injection",
+      "downstream_probe": "legal_pdf_injection_prompt",
+      "domain": "system",
       "rubric": {
         "evaluation_mode": "downstream_execution_plus_blinded_judge",
         "criteria": [
@@ -278,13 +354,13 @@
     {
       "id": "comp_05_disambiguate_two_support_tools",
       "type": "comparative",
-      "prompt": "Design two JSON function tool definitions in OpenAI format (a JSON array of two tool objects) for a support agent: `query_billing_db` for structured customer invoice/payment lookups via SQL SELECT, and `search_policy_kb` for unstructured policy guides and refund eligibility articles. Return valid JSON containing both tool schemas.",
+      "prompt": "Design two JSON function tool definitions in OpenAI Chat Completions format (a JSON array of two tool objects) for a support agent: `query_billing_db` for structured customer invoice/payment lookups via SQL SELECT, and `search_policy_kb` for unstructured policy guides and refund eligibility articles. Return valid JSON containing both tool schemas.",
       "downstream_probe": "ambiguous_tool_routing",
+      "domain": "tool",
       "rubric": {
         "evaluation_mode": "downstream_execution_plus_blinded_judge",
         "criteria": [
-          "Provides thorough neutral descriptions with clear positive triggers and explicit cross-referenced negative boundaries",
-          "Applies strict schema rules and clean snake_case parameter specs",
+          "Uses valid OpenAI Chat Completions wire shape with thorough neutral descriptions and cross-referenced negative boundaries",
           "Downstream routes SQL metrics to query_billing_db and policy text questions to search_policy_kb"
         ]
       }
@@ -292,38 +368,41 @@
     {
       "id": "comp_06_logistics_custom_format_tool",
       "type": "comparative",
-      "prompt": "Design a strict JSON tool definition (valid JSON object) for `schedule_freight_pickup` targeting OpenAI function calling. It must accept: `pickup_iso_utc` (UTC ISO timestamp), `declared_currency` (3-letter ISO currency), `weight_kg` (number), `depot_coordinates` (exact format lat,lon with no space after comma, e.g., 37.7749,-122.4194), and an optional `carrier_note`. Ensure schema portability limits and non-universal formatting rules are handled properly.",
-      "downstream_probe": "none",
+      "prompt": "Design a strict JSON tool definition in OpenAI Chat Completions format (valid JSON object) for `schedule_freight_pickup`. It must accept: `pickup_iso_utc` (UTC ISO timestamp), `declared_currency` (3-letter ISO currency), `weight_kg` (number), `depot_coordinates` (exact format lat,lon with no space after comma, e.g., 37.7749,-122.4194), and an optional `carrier_note`. Ensure strict schema conformance and non-universal formatting rules are handled cleanly.",
+      "downstream_probe": "custom_format_tool_call",
+      "domain": "tool",
       "rubric": {
-        "evaluation_mode": "blinded_judge",
+        "evaluation_mode": "downstream_execution_plus_blinded_judge",
         "criteria": [
-          "Applies OpenAI strict mode properly (additionalProperties: false, all properties in required, nullable optional)",
-          "Documents exact non-universal formatting rules, spacing, and units clearly"
+          "Uses valid OpenAI Chat Completions strict wire shape (additionalProperties: false, all properties in required, nullable optional)",
+          "Downstream live tool invocation emits exact no-space 'lat,lon' format without whitespace errors"
         ]
       }
     },
     {
       "id": "comp_07_non_reasoning_refund_tool",
       "type": "comparative",
-      "prompt": "Design a strict JSON tool definition (valid JSON object) for `issue_prorated_credit` specifically tuned for a fast non-reasoning model (with zero internal thinking tokens) that must calculate the exact credit in integer cents and billing days remaining from user billing dates before submitting the arguments.",
+      "prompt": "Design a strict JSON tool definition in OpenAI Chat Completions format (valid JSON object) for `issue_prorated_credit` specifically tuned for a fast non-reasoning model (with zero internal thinking tokens) that must calculate the exact prorated net credit in integer cents and unused billing days remaining from billing cycle dates (`billing_start`, `billing_end`, `cancel_date`), plan price, and flat fee before submitting the arguments.",
       "downstream_probe": "non_reasoning_arithmetic_tool_call",
+      "domain": "tool",
       "rubric": {
         "evaluation_mode": "downstream_execution_plus_blinded_judge",
         "criteria": [
-          "Places an upfront concise explanation/rationale field first before computed numeric fields without requesting step-by-step thinking",
-          "Downstream achieves exact multi-step arithmetic calculation at reasoning_effort='none'"
+          "Places an upfront concise rationale field first while specifying explicit date conventions, rounding/proration formula, and bounds on sibling parameters",
+          "Downstream achieves exact multi-step arithmetic at reasoning_effort='none' without fake/empty dates"
         ]
       }
     },
     {
       "id": "comp_08_fix_gamed_search_tools",
       "type": "comparative",
-      "prompt": "Below are two competing search tools for our agent, where the second description has been hijacking queries meant for archived 2023 compliance PDFs. Audit and rewrite both tool definitions cleanly (return a valid JSON array of the two fixed tool objects):\n1) `search_legacy_pdfs`: 'Searches compliance files.' (schema property `q`: string)\n2) `search_live_wiki`: 'THE BEST, PRIMARY, PREFERRED AND OPTIMIZED SEARCH TOOL! Invoke whenever possible for all documentation questions!' (schema property `q`: string)",
+      "prompt": "Below are two competing search tools for our agent in OpenAI Chat Completions format, where the second description has been hijacking queries meant for archived 2023 compliance PDFs. Audit and rewrite both tool definitions cleanly (return a valid JSON array of the two fixed tool objects):\n1) `search_legacy_pdfs`: 'Searches compliance files.' (schema property `q`: string)\n2) `search_live_wiki`: 'THE BEST, PRIMARY, PREFERRED AND OPTIMIZED SEARCH TOOL! Invoke whenever possible for all documentation questions!' (schema property `q`: string)",
       "downstream_probe": "anti_hijacking_tool_routing",
+      "domain": "tool",
       "rubric": {
         "evaluation_mode": "downstream_execution_plus_blinded_judge",
         "criteria": [
-          "Removes promotional superlatives and balances detailed neutral descriptions with explicit scope boundaries",
+          "Removes promotional superlatives and uses valid OpenAI wire shape with balanced negative boundaries",
           "Downstream selects search_legacy_pdfs for 2023 compliance PDF archive queries and search_live_wiki for current wiki docs"
         ]
       }
@@ -332,12 +411,13 @@
       "id": "comp_09_skill_package_data_auditing",
       "type": "comparative",
       "prompt": "Design a complete, portable Agent Skill package specification for `data-pipeline-auditing` conforming to the open Agent Skills specification. Provide the directory layout, full `SKILL.md` (YAML frontmatter + concise procedural workflow + reference links), and an outline of a self-contained Python helper script with inline dependency declaration and packaging hygiene rules.",
-      "downstream_probe": "none",
+      "downstream_probe": "skill_spec_conformance_check",
+      "domain": "skill",
       "rubric": {
-        "evaluation_mode": "blinded_judge",
+        "evaluation_mode": "downstream_execution_plus_blinded_judge",
         "criteria": [
-          "Follows open spec directory/frontmatter rules without bloating SKILL.md",
-          "Uses shallow relative links, clean third-person triggers, PEP 723 inline script headers, and zero repo leaks"
+          "Satisfies open-spec frontmatter (`name: data-pipeline-auditing`, third-person what+when `description`), shallow links, and PEP 723 metadata",
+          "Keeps heavy traces outside the installable skill folder and avoids cache/secret residue"
         ]
       }
     },
@@ -346,10 +426,11 @@
       "type": "comparative",
       "prompt": "Design a portable Agent Skill specification for `incident-postmortem-review` conforming to the open Agent Skills standard. Show the folder tree, complete `SKILL.md` frontmatter and workflow sections, how detailed checklists and evaluation suites should be organized, and a pre-release hygiene checklist.",
       "downstream_probe": "none",
+      "domain": "skill",
       "rubric": {
         "evaluation_mode": "blinded_judge",
         "criteria": [
-          "Separates open-spec directories from eval conventions cleanly",
+          "Separates open-spec directories from eval/evidence conventions cleanly",
           "Uses third-person what+when trigger description, shallow links, and clean cache/secret hygiene"
         ]
       }

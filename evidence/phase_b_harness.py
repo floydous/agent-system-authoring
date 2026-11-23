@@ -557,7 +557,11 @@ class PB6_InSchemaRationaleNoneEffort:
     PROBLEMS = [
         {
             "id": "PB6_01",
-            "prompt": "Schedule compute job JOB-101. Base compute rate is 45 cents/min for a 38-minute job, plus a flat 250-cent queue fee, then apply a 20% discount to the entire pre-discount sum (guaranteed integer). The job starts at hour 14 and ends after adding buffer-adjusted hours = ceil(38/30)*2 = 4 hours; report final_slot_hour modulo 24, and buffer_minutes = 15% of 38 rounded to nearest integer? Wait use exact rules: duration=40 min, base=45 cents/min -> 40*45 + 200 setup, 10% tier discount, final_slot_hour=(14 + 4) mod 24, buffer_minutes=duration//4.",
+            "prompt": (
+                "Schedule compute job JOB-101. Compute cost: 40 minutes at 45 cents/min plus a 200-cent setup fee, "
+                "followed by a 10% tier discount on the combined subtotal. Start hour is 14 and advances by 4 hours modulo 24. "
+                "Buffer equals duration // 4."
+            ),
             "exp_cost": 1800,
             "exp_hour": 18,
             "exp_buf": 10,
@@ -598,13 +602,6 @@ class PB6_InSchemaRationaleNoneEffort:
             "exp_buf": 18,
         },
     ]
-
-    # Clean rewrite of PB6_01 prompt without internal scratch text!
-    PROBLEMS[0]["prompt"] = (
-        "Schedule compute job JOB-101. Compute cost: 40 minutes at 45 cents/min plus a 200-cent setup fee, "
-        "followed by a 10% tier discount on the combined subtotal. Start hour is 14 and advances by 4 hours modulo 24. "
-        "Buffer equals duration // 4."
-    )
 
     @classmethod
     def _tools(cls, cond: str) -> List[Dict[str, Any]]:

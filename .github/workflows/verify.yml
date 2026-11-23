@@ -1,0 +1,27 @@
+name: Verify Skill & Recompute Evidence
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Verify skill package conformance and hygiene
+        run: python -B skills/agent-system-authoring/scripts/verify_skill.py skills/agent-system-authoring
+
+      - name: Verify offline statistical recomputation (Phase A, B & C)
+        run: python -B evidence/recompute_stats.py --check
+
+      - name: Verify Eval Suite v3 report reproducibility
+        run: python -B evidence/run_evals.py --rescore-only --check

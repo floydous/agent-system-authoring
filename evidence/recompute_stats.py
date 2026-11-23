@@ -20,6 +20,7 @@ Writes results to evidence/stats_recomputed.md and exits 0.
 
 from __future__ import annotations
 
+import argparse
 from collections import defaultdict
 import json
 import math
@@ -337,6 +338,14 @@ def render_suite_table(
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="Recompute Phase A/B/C statistics from raw JSONL traces.")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Verify that existing evidence/stats_recomputed.md matches recomputed output byte-for-byte (LF-normalized).",
+    )
+    args = parser.parse_args()
+
     evidence_dir = Path(__file__).resolve().parent
     raw_a = evidence_dir / "raw"
     raw_b = evidence_dir / "raw_phase_b"
@@ -545,7 +554,19 @@ def main() -> int:
             lines.append(f"- `{c}`: " + ", ".join(parts))
 
     lines.append("")
-    out_path.write_text("\n".join(lines), encoding="utf-8")
+    rendered = "\n".join(lines).replace("\r\n", "\n")
+    if args.check:
+        if not out_path.exists():
+            print(f"ERROR: {out_path} does not exist.", file=sys.stderr)
+            return 1
+        existing = out_path.read_text(encoding="utf-8").replace("\r\n", "\n")
+        if existing != rendered:
+            print(f"ERROR: {out_path} has drifted from recomputed trace statistics.", file=sys.stderr)
+            return 1
+        print(f"OK: {out_path} matches recomputed trace statistics exactly.")
+        return 0
+
+    out_path.write_text(rendered, encoding="utf-8")
     print(f"Wrote recomputed stats to {out_path}")
     return 0
 

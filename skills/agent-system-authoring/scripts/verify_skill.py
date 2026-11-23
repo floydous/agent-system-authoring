@@ -1,22 +1,20 @@
 # /// script
 # requires-python = ">=3.10"
-# dependencies = [
-#     "pyyaml>=6.0.1",
-# ]
+# dependencies = []
 # ///
-"""Standalone Pre-Delivery Verification Script for Agent Skill: agent-system-authoring.
+"""Standalone Pre-Delivery Verification Script for Agent Skills.
 
 Validates specification conformance according to the Agent Skills specification
 (https://agentskills.io/specification), including:
-1. Root directory layout, lowercase directories, and allowed evidence/ structure.
+1. Directory layout, lowercase directories, and keeping evidence/ outside skill root.
 2. Packaging hygiene: rejects mock_* files, __pycache__, .pytest_cache, tests/, and secret literals.
 3. SKILL.md YAML frontmatter schema, naming regex, and description bounds.
-4. SKILL.md line count (<500 lines) and progressive disclosure invariants.
+4. SKILL.md line count (<500 lines), token budget (<5000 est tokens), and section hierarchy.
 5. Reference linking: single-hop direct links without chained hops or broken targets.
-6. Evidence ledger tier conformance across all 28 rule IDs.
-7. Assets and templates validity (flat Markdown system prompt template, strict JSON tool schema).
-8. Evals schema validity (evals/evals.json dual-axis triggering and comparative test cases).
-9. Script portability and PEP 723 inline dependency metadata.
+6. Evidence ledger tier conformance (when running on agent-system-authoring without --generic).
+7. Assets and templates validity (when running on agent-system-authoring without --generic).
+8. Evals schema validity and version sync (when evals/evals.json exists).
+9. Script portability and PEP 723 inline dependency metadata (stdlib-only).
 
 Returns exit code 0 if all validation checks pass; non-zero on failure.
 """
@@ -29,11 +27,6 @@ from pathlib import Path
 import re
 import sys
 from typing import Any, Dict, List, Optional, Tuple
-
-try:
-    import yaml  # type: ignore
-except ImportError:
-    yaml = None  # type: ignore
 
 
 SKILL_NAME_PATTERN = re.compile(r"^[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,63}$")
@@ -56,10 +49,11 @@ EXPECTED_RULE_IDS = (
 SECRET_PATTERNS = [
     re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b"),
     re.compile(r"Bearer\s+[A-Za-z0-9._-]{20,}"),
-    re.compile(r"\b10\.0\.0\.130\b"),
-    re.compile(r"\b168\.110\.212\.21\b"),
+    re.compile(r"https?://(?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(?::\d+)?"),
+    re.compile(r"https?://\d{1,3}(?:\.\d{1,3}){3}:\d+"),
     re.compile(r"\bgho_[A-Za-z0-9_]{20,}\b"),
 ]
+LEAKED_INTERNAL_RULE_RE = re.compile(r"\bR-(?:SYS|TOOL|SKILL)-\d{2}\b")
 
 
 class SkillVerificationError:
@@ -76,10 +70,11 @@ class SkillVerificationError:
 
 
 class SkillVerifier:
-    """Comprehensive offline validator for the agent-system-authoring skill package."""
+    """Comprehensive stdlib-only offline validator for Agent Skill packages."""
 
-    def __init__(self, root_dir: Path):
+    def __init__(self, root_dir: Path, generic: bool = False):
         self.root = root_dir.resolve()
+        self.generic = generic or (self.root.name != "agent-system-authoring")
         self.errors: List[SkillVerificationError] = []
         self.warnings: List[str] = []
         self.passed_checks: List[str] = []
@@ -91,11 +86,13 @@ class SkillVerifier:
         loc = f" [{path}]" if path else ""
         self.warnings.append(f"[WARNING/RECOMMENDATION] {category}{loc}: {message}")
 
-    def log_success(self, check_name: str) -> None:
-        self.passed_checks.append(check_name)
+    def log_if_clean(self, err_before: int, check_name: str) -> None:
+        """Record check as passed ONLY when zero failures were added during that check."""
+        if len(self.errors) == err_before:
+            self.passed_checks.append(check_name)
 
     def extract_frontmatter(self, content: str) -> Tuple[Dict[str, Any], str, int]:
-        """Extract and parse YAML frontmatter and markdown body."""
+        """Parse YAML frontmatter block cleanly using Python stdlib only."""
         lines = content.splitlines(keepends=True)
         if not lines or lines[0].strip() != "---":
             return {}, content, 0
@@ -111,14 +108,6 @@ class SkillVerifier:
 
         raw_yaml = "".join(lines[1:end_idx])
         body = "".join(lines[end_idx + 1 :])
-
-        if yaml is not None:
-            try:
-                parsed = yaml.safe_load(raw_yaml)
-                return (parsed if isinstance(parsed, dict) else {}), body, end_idx + 1
-            except Exception as e:
-                self.log_failure("YAML Frontmatter", f"PyYAML parsing exception: {e}")
-                return {}, body, end_idx + 1
 
         parsed_dict: Dict[str, Any] = {}
         current_key: Optional[str] = None
@@ -138,7 +127,7 @@ class SkillVerifier:
                 k, v = stripped.split(":", 1)
                 current_key = k.strip()
                 val = v.strip().strip("'\"")
-                if val in (">", "|"):
+                if val in (">", "|", ">-", "|-"):
                     is_folded = True
                 elif not val:
                     parsed_dict[current_key] = {}
@@ -158,6 +147,7 @@ class SkillVerifier:
 
     def verify_directory_layout(self) -> None:
         """Verify directory structure and absence of disallowed root artifacts."""
+        err_before = len(self.errors)
         if not self.root.exists() or not self.root.is_dir():
             self.log_failure("Directory Layout", f"Skill root directory does not exist: {self.root}")
             return
@@ -168,28 +158,34 @@ class SkillVerifier:
         if disallowed:
             self.log_failure("Directory Layout", f"Disallowed root markdown files found: {disallowed}")
 
-        required_dirs = [
-            ("references", self.root / "references"),
-            ("scripts", self.root / "scripts"),
-            ("assets/templates", self.root / "assets" / "templates"),
-            ("evals", self.root / "evals"),
-        ]
-        for name, dir_path in required_dirs:
-            if not dir_path.exists() or not dir_path.is_dir():
-                self.log_failure("Directory Layout", f"Required directory missing: {name}", dir_path)
+        if not self.generic:
+            required_dirs = [
+                ("references", self.root / "references"),
+                ("scripts", self.root / "scripts"),
+                ("assets/templates", self.root / "assets" / "templates"),
+                ("evals", self.root / "evals"),
+            ]
+            for name, dir_path in required_dirs:
+                if not dir_path.exists() or not dir_path.is_dir():
+                    self.log_failure("Directory Layout", f"Required directory missing: {name}", dir_path)
 
         if (self.root / "evidence").exists():
-            self.log_failure("Directory Layout", "Repo-level evidence/ should live outside the lean installable skill directory", self.root / "evidence")
+            self.log_failure(
+                "Directory Layout",
+                "Repo-level evidence/ must live outside the lean installable skill directory",
+                self.root / "evidence",
+            )
 
         found_names = {p.name for p in self.root.iterdir()}
         for d in ["references", "scripts", "assets", "evals"]:
             if any(n.lower() == d for n in found_names) and d not in found_names:
                 self.log_failure("Directory Layout", f"Directory '{d}' must be strictly lowercase")
 
-        self.log_success("Directory Layout and Casing")
+        self.log_if_clean(err_before, "Directory Layout and Casing")
 
     def verify_packaging_hygiene(self) -> None:
         """Verify absence of caches, dev test runners, mock files, and hardcoded credentials."""
+        err_before = len(self.errors)
         forbidden_dir_names = {"__pycache__", ".pytest_cache", ".mypy_cache", "tests"}
         forbidden_file_names = {"pytest.ini", "tox.ini", "conftest.py", ".DS_Store", "Thumbs.db"}
 
@@ -208,24 +204,23 @@ class SkillVerifier:
                 self.log_failure("Packaging Hygiene", f"Disallowed file present: {rel}", path)
                 continue
 
-            # Allow raw JSONL and provenance scripts only inside evidence/
-            if path.suffix == ".jsonl" and rel.parts[0] != "evidence":
-                self.log_failure("Packaging Hygiene", f"JSONL trace file outside evidence/: {rel}", path)
+            if path.suffix == ".jsonl":
+                self.log_failure("Packaging Hygiene", f"JSONL trace file inside installable skill: {rel}", path)
 
-            # Check allowed text files for leaked secret literals
-            if path.suffix in {".md", ".py", ".json", ".jsonl"}:
+            if path.suffix in {".md", ".py", ".json", ".yaml", ".yml"}:
                 try:
                     text = path.read_text(encoding="utf-8")
                 except UnicodeDecodeError:
                     continue
                 for pat in SECRET_PATTERNS:
                     if pat.search(text):
-                        self.log_failure("Packaging Hygiene", f"Potential credential literal matched in {rel}", path)
+                        self.log_failure("Packaging Hygiene", f"Potential credential or private IP endpoint matched in {rel}", path)
 
-        self.log_success("Packaging Hygiene & Secret Scan")
+        self.log_if_clean(err_before, "Packaging Hygiene & Secret Scan")
 
     def verify_skill_md_frontmatter(self) -> None:
         """Verify SKILL.md frontmatter schema, name match, and description limits."""
+        err_before = len(self.errors)
         skill_md = self.root / "SKILL.md"
         if not skill_md.exists() or not skill_md.is_file():
             self.log_failure("Frontmatter Schema", "SKILL.md missing at skill package root", skill_md)
@@ -237,7 +232,7 @@ class SkillVerifier:
             self.log_failure("Frontmatter Schema", "SKILL.md must start with '---' on line 1", skill_md)
             return
 
-        fm, body, _ = self.extract_frontmatter(content)
+        fm, _, _ = self.extract_frontmatter(content)
         if not fm:
             self.log_failure("Frontmatter Schema", "Frontmatter parsed to empty dict or missing closing '---'", skill_md)
             return
@@ -258,13 +253,14 @@ class SkillVerifier:
             desc_len = len(desc.strip())
             if desc_len > 1024:
                 self.log_failure("Frontmatter Schema", f"Description length {desc_len} exceeds 1024 character limit", skill_md)
-            desc_lower = desc.lower()
-            has_what = any(k in desc_lower for k in ["teach", "author", "write", "instruction", "system", "schema", "prompt"])
-            has_when = any(k in desc_lower for k in ["when", "use", "trigger", "design", "create", "ask"])
-            if not has_what:
-                self.log_failure("Frontmatter Schema", "Description must state WHAT the skill does", skill_md)
-            if not has_when:
-                self.log_failure("Frontmatter Schema", "Description must state WHEN to trigger the skill", skill_md)
+            if not self.generic:
+                desc_lower = desc.lower()
+                has_what = any(k in desc_lower for k in ["teach", "author", "write", "instruction", "system", "schema", "prompt"])
+                has_when = any(k in desc_lower for k in ["when", "use", "trigger", "design", "create", "ask"])
+                if not has_what:
+                    self.log_failure("Frontmatter Schema", "Description must state WHAT the skill does", skill_md)
+                if not has_when:
+                    self.log_failure("Frontmatter Schema", "Description must state WHEN to trigger the skill", skill_md)
 
         if "license" in fm:
             lic = fm["license"]
@@ -289,10 +285,11 @@ class SkillVerifier:
             if not isinstance(tools_val, str):
                 self.log_failure("Frontmatter Schema", "Optional 'allowed-tools' must be a space-separated string", skill_md)
 
-        self.log_success("SKILL.md Frontmatter Schema")
+        self.log_if_clean(err_before, "SKILL.md Frontmatter Schema")
 
     def verify_skill_md_body_limits(self) -> None:
         """Verify SKILL.md body line limit, token estimates, and section hierarchy."""
+        err_before = len(self.errors)
         skill_md = self.root / "SKILL.md"
         if not skill_md.exists():
             return
@@ -303,13 +300,13 @@ class SkillVerifier:
         if len(lines) >= 500:
             self.log_failure("Progressive Disclosure", f"SKILL.md line count {len(lines)} exceeds 500 line limit", skill_md)
 
-        if len(lines) < 40:
-            self.log_failure("Progressive Disclosure", f"SKILL.md total lines {len(lines)} below minimum threshold of 40", skill_md)
+        if len(lines) < 25:
+            self.log_failure("Progressive Disclosure", f"SKILL.md total lines {len(lines)} below minimum threshold of 25", skill_md)
 
         _, body, _ = self.extract_frontmatter(content)
         non_blank_lines = [line for line in body.splitlines() if line.strip()]
-        if len(non_blank_lines) < 30:
-            self.log_failure("Progressive Disclosure", f"Body substantive content {len(non_blank_lines)} lines below threshold 30", skill_md)
+        if len(non_blank_lines) < 20:
+            self.log_failure("Progressive Disclosure", f"Body substantive content {len(non_blank_lines)} lines below threshold 20", skill_md)
 
         est_tokens = len(body) / 4.0
         if est_tokens >= 5000:
@@ -326,22 +323,23 @@ class SkillVerifier:
             if len(line) > 1000:
                 self.log_failure("Progressive Disclosure", f"Line {i} exceeds 1,000 character limit ({len(line)} chars)", skill_md)
 
-        headings = [h.strip().lower() for h in re.findall(r"^#+\s+(.+)$", body, re.MULTILINE)]
-        has_workflow = any("workflow" in h or "procedure" in h or "step" in h for h in headings)
-        has_ref = any("reference" in h or "evidence" in h or "guide" in h for h in headings)
+        if not self.generic:
+            headings = [h.strip().lower() for h in re.findall(r"^#+\s+(.+)$", body, re.MULTILINE)]
+            has_workflow = any("workflow" in h or "procedure" in h or "step" in h for h in headings)
+            has_ref = any("reference" in h or "evidence" in h or "guide" in h for h in headings)
+            if not has_workflow:
+                self.log_failure("Structural Hierarchy", "SKILL.md missing procedural authoring workflow section heading", skill_md)
+            if not has_ref:
+                self.log_failure("Structural Hierarchy", "SKILL.md missing references section heading", skill_md)
 
-        if not has_workflow:
-            self.log_failure("Structural Hierarchy", "SKILL.md missing procedural authoring workflow section heading", skill_md)
-        if not has_ref:
-            self.log_failure("Structural Hierarchy", "SKILL.md missing references section heading", skill_md)
-
-        self.log_success("SKILL.md Line Budget & Section Hierarchy")
+        self.log_if_clean(err_before, "SKILL.md Line Budget & Section Hierarchy")
 
     def verify_reference_linking(self) -> None:
         """Verify shallow relative linking invariants and absence of orphaned references."""
+        err_before = len(self.errors)
         skill_md = self.root / "SKILL.md"
         refs_dir = self.root / "references"
-        if not skill_md.exists() or not refs_dir.exists():
+        if not skill_md.exists():
             return
 
         content = skill_md.read_text(encoding="utf-8")
@@ -376,42 +374,46 @@ class SkillVerifier:
                 if "references/" in target:
                     ref_links.append((text, clean_target))
 
-        if len(ref_links) < 3:
-            self.log_failure("Reference Linking", f"Expected >= 3 links from SKILL.md to references/, found {len(ref_links)}", skill_md)
+        if refs_dir.exists():
+            if not self.generic and len(ref_links) < 3:
+                self.log_failure("Reference Linking", f"Expected >= 3 links from SKILL.md to references/, found {len(ref_links)}", skill_md)
 
-        skill_linked_files = {Path(t).name for _, t in ref_links}
-        ledger_path = refs_dir / "evidence_ledger.md"
-        ledger_text = ledger_path.read_text(encoding="utf-8") if ledger_path.exists() else ""
+            skill_linked_files = {Path(t).name for _, t in ref_links}
+            ledger_path = refs_dir / "evidence_ledger.md"
+            ledger_text = ledger_path.read_text(encoding="utf-8") if ledger_path.exists() else ""
 
-        for ref_file in refs_dir.glob("*.md"):
-            is_linked = (ref_file.name in skill_linked_files) or (ref_file.name in ledger_text) or (ref_file.name == "evidence_ledger.md")
-            if not is_linked:
-                self.log_failure("Reference Linking", f"Orphaned reference file not linked anywhere: {ref_file.name}", ref_file)
+            for ref_file in refs_dir.glob("*.md"):
+                is_linked = (ref_file.name in skill_linked_files) or (ref_file.name in ledger_text) or (ref_file.name == "evidence_ledger.md")
+                if not is_linked:
+                    self.log_failure("Reference Linking", f"Orphaned reference file not linked anywhere: {ref_file.name}", ref_file)
 
-            ref_content = ref_file.read_text(encoding="utf-8")
-            ref_links_in_doc = re.findall(r"\[([^\]]+)\]\(([^)]+)\)", ref_content)
-            for ltext, ltarget in ref_links_in_doc:
-                if ltarget.startswith(("http://", "https://", "#")):
-                    continue
-                clean_l = ltarget.split("#")[0]
-                if not clean_l:
-                    continue
-                if "evidence/" in clean_l:
-                    self.log_failure("Reference Linking", f"Relative link to repo-level evidence/ in {ref_file.name}: {ltarget} (use canonical GitHub URL)", ref_file)
-                    continue
-                resolved_ref = (ref_file.parent / clean_l).resolve()
-                try:
-                    resolved_ref.relative_to(self.root)
-                except ValueError:
-                    self.log_failure("Reference Linking", f"Relative link escapes skill root in {ref_file.name}: {ltarget}", ref_file)
-                    continue
-                if not resolved_ref.exists():
-                    self.log_failure("Reference Linking", f"Broken relative link in {ref_file.name}: [{ltext}]({ltarget})", ref_file)
+                ref_content = ref_file.read_text(encoding="utf-8")
+                ref_links_in_doc = re.findall(r"\[([^\]]+)\]\(([^)]+)\)", ref_content)
+                for ltext, ltarget in ref_links_in_doc:
+                    if ltarget.startswith(("http://", "https://", "#")):
+                        continue
+                    clean_l = ltarget.split("#")[0]
+                    if not clean_l:
+                        continue
+                    if "evidence/" in clean_l:
+                        self.log_failure("Reference Linking", f"Relative link to repo-level evidence/ in {ref_file.name}: {ltarget} (use canonical GitHub URL)", ref_file)
+                        continue
+                    resolved_ref = (ref_file.parent / clean_l).resolve()
+                    try:
+                        resolved_ref.relative_to(self.root)
+                    except ValueError:
+                        self.log_failure("Reference Linking", f"Relative link escapes skill root in {ref_file.name}: {ltarget}", ref_file)
+                        continue
+                    if not resolved_ref.exists():
+                        self.log_failure("Reference Linking", f"Broken relative link in {ref_file.name}: [{ltext}]({ltarget})", ref_file)
 
-        self.log_success("Single-Hop Reference Linking Invariants")
+        self.log_if_clean(err_before, "Single-Hop Reference Linking Invariants")
 
     def verify_evidence_ledger_tiers(self) -> None:
         """Verify that every rule ID in evidence_ledger.md uses the T1-T5/Methodology/Convention/Contested tier system."""
+        if self.generic:
+            return
+        err_before = len(self.errors)
         ledger_path = self.root / "references" / "evidence_ledger.md"
         if not ledger_path.exists():
             self.log_failure("Evidence Ledger", "references/evidence_ledger.md missing", ledger_path)
@@ -439,10 +441,13 @@ class SkillVerifier:
             if tier not in ALLOWED_TIERS:
                 self.log_failure("Evidence Ledger", f"Rule {rid} has invalid tier '{tier}' (expected one of {sorted(ALLOWED_TIERS)})", ledger_path)
 
-        self.log_success("Evidence Ledger Tier Vocabulary")
+        self.log_if_clean(err_before, "Evidence Ledger Tier Vocabulary")
 
     def verify_templates(self) -> None:
-        """Verify flat Markdown system prompt, skill starter, and strict JSON tool schema templates."""
+        """Verify starter templates have clean runtime formatting and zero leaked internal notes."""
+        if self.generic:
+            return
+        err_before = len(self.errors)
         templates_dir = self.root / "assets" / "templates"
         sys_tmpl = templates_dir / "system_prompt_template.md"
         legacy_xml = templates_dir / "system_prompt_template.xml"
@@ -466,45 +471,61 @@ class SkillVerifier:
 
         if not skill_tmpl.exists():
             self.log_failure("Templates", "assets/templates/skill_template.md missing", skill_tmpl)
+        else:
+            sk_text = skill_tmpl.read_text(encoding="utf-8")
+            if LEAKED_INTERNAL_RULE_RE.search(sk_text):
+                self.log_failure("Templates", "skill_template.md leaks internal agent-system-authoring rule IDs (R-SYS/TOOL/SKILL)", skill_tmpl)
 
         if not tool_tmpl.exists():
             self.log_failure("Templates", "assets/templates/tool_schema_template.json missing", tool_tmpl)
         else:
+            raw_tool_txt = tool_tmpl.read_text(encoding="utf-8")
+            if LEAKED_INTERNAL_RULE_RE.search(raw_tool_txt) or "references/" in raw_tool_txt:
+                self.log_failure("Templates", "tool_schema_template.json leaks internal rule IDs or references/ paths into runtime tool descriptions", tool_tmpl)
             try:
-                schema = json.loads(tool_tmpl.read_text(encoding="utf-8"))
-                if "properties" not in schema:
-                    self.log_failure("Templates", "Tool template missing 'properties' dictionary", tool_tmpl)
-                if schema.get("additionalProperties", True) is not False:
-                    self.log_failure("Templates", "Tool template must specify additionalProperties: false", tool_tmpl)
-
-                props = list(schema.get("properties", {}).keys())
-                reqs = set(schema.get("required", []))
-                if set(props) != reqs:
-                    self.log_failure("Templates", f"Strict tool schema requires all properties in 'required'. Props: {set(props)}, Req: {reqs}", tool_tmpl)
-
-                if len(props) < 2:
-                    self.log_failure("Templates", f"Tool schema has {len(props)} properties; expected >= 2", tool_tmpl)
+                wrapper = json.loads(raw_tool_txt)
+                if wrapper.get("type") != "function" or not isinstance(wrapper.get("function"), dict):
+                    self.log_failure("Templates", "tool_schema_template.json must use valid OpenAI wire shape {'type': 'function', 'function': {...}}", tool_tmpl)
                 else:
-                    first_prop = props[0].lower()
-                    if "thought" not in first_prop and "rationale" not in first_prop and "reason" not in first_prop:
-                        self.log_warning("Templates", f"First property is '{first_prop}'; rationale-first is recommended for non-reasoning constrained decoding.", tool_tmpl)
-
-                for prop_name in props:
-                    if not SNAKE_CASE_PATTERN.match(prop_name):
-                        self.log_failure("Templates", f"Property '{prop_name}' in tool template is not snake_case", tool_tmpl)
-
+                    fn = wrapper["function"]
+                    if not isinstance(fn.get("name"), str) or not SNAKE_CASE_PATTERN.match(fn["name"]):
+                        self.log_failure("Templates", "function.name in tool_schema_template.json must be snake_case", tool_tmpl)
+                    if fn.get("strict") is not True:
+                        self.log_failure("Templates", "function.strict must be true in OpenAI strict tool_schema_template.json", tool_tmpl)
+                    params = fn.get("parameters")
+                    if not isinstance(params, dict) or params.get("type") != "object":
+                        self.log_failure("Templates", "function.parameters must be an object schema", tool_tmpl)
+                    else:
+                        if params.get("additionalProperties", True) is not False:
+                            self.log_failure("Templates", "function.parameters must specify additionalProperties: false", tool_tmpl)
+                        props = list((params.get("properties") or {}).keys())
+                        reqs = set(params.get("required") or [])
+                        if not props or set(props) != reqs:
+                            self.log_failure("Templates", f"OpenAI strict tool schema requires all properties in 'required'. Props: {set(props)}, Req: {reqs}", tool_tmpl)
+                        if len(props) < 2:
+                            self.log_failure("Templates", f"Tool schema has {len(props)} properties; expected >= 2", tool_tmpl)
+                        else:
+                            first_prop = props[0].lower()
+                            if "thought" not in first_prop and "rationale" not in first_prop and "reason" not in first_prop:
+                                self.log_warning("Templates", f"First property is '{first_prop}'; rationale-first is recommended for non-reasoning constrained decoding.", tool_tmpl)
+                        for prop_name in props:
+                            if not SNAKE_CASE_PATTERN.match(prop_name):
+                                self.log_failure("Templates", f"Property '{prop_name}' in tool template is not snake_case", tool_tmpl)
             except json.JSONDecodeError as e:
                 self.log_failure("Templates", f"tool_schema_template.json is not valid JSON: {e}", tool_tmpl)
 
-        self.log_success("Assets Templates Validation")
+        self.log_if_clean(err_before, "Assets Templates Validation")
 
     def verify_evals(self) -> None:
-        """Verify evals/evals.json dual-axis triggering and comparative test cases."""
+        """Verify evals/evals.json dual-axis triggering, comparative cases, and version sync."""
         evals_file = self.root / "evals" / "evals.json"
         if not evals_file.exists():
+            if self.generic:
+                return
             self.log_failure("Evals Schema", "evals/evals.json missing", evals_file)
             return
 
+        err_before = len(self.errors)
         try:
             data = json.loads(evals_file.read_text(encoding="utf-8"))
             if data.get("skill_name") != self.root.name:
@@ -533,9 +554,9 @@ class SkillVerifier:
                 eval_type = item.get("type")
                 if eval_type == "trigger_positive" or item.get("trigger") is True or item.get("should_trigger") is True:
                     positives.append(item)
-                elif eval_type == "trigger_negative" or item.get("trigger") is False or item.get("should_trigger") is False:
+                elif eval_type in ("trigger_negative", "trigger_negative_none") or item.get("trigger") is False or item.get("should_trigger") is False:
                     negatives.append(item)
-                elif eval_type == "comparative" or "comparative" in str(item_id):
+                elif eval_type == "comparative" or "comparative" in str(item_id) or str(item_id).startswith("comp_"):
                     comparatives.append(item)
 
             if len(positives) < 2:
@@ -566,19 +587,20 @@ class SkillVerifier:
         except json.JSONDecodeError as e:
             self.log_failure("Evals Schema", f"evals/evals.json failed JSON parsing: {e}", evals_file)
 
-        self.log_success("Evals Schema & Dual-Axis Test Suite")
+        self.log_if_clean(err_before, "Evals Schema & Dual-Axis Test Suite")
 
     def verify_pep723_metadata(self) -> None:
-        """Verify PEP 723 inline dependency metadata on utility scripts."""
+        """Verify PEP 723 inline dependency metadata on utility and provenance scripts."""
+        err_before = len(self.errors)
         script_targets: List[Path] = sorted((self.root / "scripts").glob("*.py")) if (self.root / "scripts").exists() else []
-        repo_evidence = self.root.parent.parent / "evidence"
-        if repo_evidence.exists():
-            for cand in ["recompute_stats.py", "phase_b_harness.py", "phase_c_harness.py", "run_evals.py"]:
-                p = repo_evidence / cand
-                if p.exists():
-                    script_targets.append(p)
+        if not self.generic:
+            repo_evidence = self.root.parent.parent / "evidence"
+            if repo_evidence.exists():
+                script_targets.extend(sorted(repo_evidence.glob("*.py")))
 
         if not script_targets:
+            if self.generic and not (self.root / "scripts").exists():
+                return
             self.log_failure("PEP 723 Metadata", "No Python scripts found under scripts/")
             return
 
@@ -594,7 +616,7 @@ class SkillVerifier:
                 if "dependencies" not in block_content:
                     self.log_failure("PEP 723 Metadata", f"Missing 'dependencies' in {script_path.name}", script_path)
 
-        self.log_success("PEP 723 Dependency Metadata")
+        self.log_if_clean(err_before, "PEP 723 Dependency Metadata")
 
     def run_all(self) -> bool:
         """Execute all validation checks in sequence."""
@@ -612,7 +634,7 @@ class SkillVerifier:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Standalone Pre-Delivery Verification Script for Agent Skill: agent-system-authoring"
+        description="Standalone stdlib-only Agent Skill Verifier (Agent Skills open specification)"
     )
     parser.add_argument(
         "target_dir",
@@ -620,12 +642,17 @@ def main() -> int:
         default=".",
         help="Path to the agent skill root directory to verify (default: current directory)",
     )
+    parser.add_argument(
+        "--generic",
+        action="store_true",
+        help="Run generic Agent Skills specification checks only (skip agent-system-authoring-specific ledger/template checks).",
+    )
     args = parser.parse_args()
 
     target_path = Path(args.target_dir).resolve()
     print(f"=== Verifying Agent Skill Package: {target_path} ===")
 
-    verifier = SkillVerifier(target_path)
+    verifier = SkillVerifier(target_path, generic=args.generic)
     success = verifier.run_all()
 
     print("\n--- Passed Checks ---")

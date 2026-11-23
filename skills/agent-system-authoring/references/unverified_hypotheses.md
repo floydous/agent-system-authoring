@@ -47,13 +47,14 @@ The following specific numbers and thresholds appeared in earlier versions of th
 
 ### C-01: Paired Affirmative Substitutes vs Bare Prohibitions (`R-SYS-05`, `PB-4` -> Resolved in `PC-2`)
 - **Phase B (`PB-4`, `n = 6` prompts)**: `paired_affirmative` (`30/30`) beat `affirmative_only` (`14/30`, `t(5) = 4.00, p = 0.0103`), while `bare_negative` (`27/30`) vs `affirmative_only` (`t(5) = 2.38, p = 0.0631`) was underpowered at `n = 6`.
-- **Phase C Resolution (`PC-2`, `n = 16` prompts × `5` repeats = `80`/arm)**: Both `bare_negative` (`0.988`, `79/80`, `t(15) = 4.06, p = 0.0010`) and `paired_affirmative` (`0.950`, `76/80`, `t(15) = 3.87, p = 0.0015`) decisively beat `affirmative_only` (`0.650`, `52/80`, `38` hits). Comparing `paired_affirmative` against `bare_negative` across `16` prompts yielded `delta = -0.038, t(15) = -1.00, p = 0.3332` (sign `p = 1.0000`), showing explicit `Do NOT` prohibitions—not positive substitutes—drive token exclusion.
+- **Phase C Resolution (`PC-2`, `n = 16` prompts × `5` repeats = `80`/arm)**: Both `bare_negative` (`0.988`, `79/80`, `t(15) = 4.06, p = 0.0010`) and `paired_affirmative` (`0.950`, `76/80`, `t(15) = 3.87, p = 0.0015`) decisively beat `affirmative_only` (`0.650`, `52/80`, `38` hits). Comparing `paired_affirmative` against `bare_negative` across `16` prompts yielded `delta = -0.038, t(15) = -1.00, p = 0.3332` (sign `0+/1-, p = 1.0000`), showing explicit `Do NOT` prohibitions—not positive substitutes—drive token exclusion.
+- **Construct & Compound Caveats**: Note that `affirmative_only` intentionally withheld the 4-word blacklist (testing the folklore practice of replacing negative rules with positive term suggestions `"such as..."`), so `PC-2` compares named exclusions against underspecified affirmative framing. Additionally, all 5 explicit-prohibition failures in `PC-2` (`consecutive-failure` on `PC2_04`) and 3 in `PB-4` (`operating-system` on `PB4_05`) were hyphenated compounds matching `\b...\b`.
 
 ### C-02: Prospective Memory Under High Reasoning Effort (`R-SYS-04`, `PB-3`)
 - **Phase B Observation**: Even under ~1,200 words of noisy log distractors, `GPT 6 Luna (xhigh)` scored `30/30` (`1.000`) in both `system_only` and `sandwich_reminder` (ceiling/uninformative). Multi-turn sessions exceeding 50% context utilization remain untested here.
 
 ### C-03: Expert Personas on Small-Sample Benchmarks (`R-SYS-06`, `PB-5`)
-- **Phase B Observation**: At `reasoning_effort = "low"`, `neutral_objective` scored `0.967` (`29/30`, `TARa@5 = 83%`) vs `expert_persona` `0.900` (`27/30`, `TARa@5 = 50%`, prompt-level `t(5) = -1.00, p = 0.3632`). Because `n = 6` prompts is underpowered to independently prove a zero difference, `R-SYS-06` rests primarily on **T5** literature (`Zheng et al.`, `Basil et al.`).
+- **Phase B Observation**: At `reasoning_effort = "low"`, `neutral_objective` scored `0.967` (`29/30`, `TARa@5 = 83%`) vs `expert_persona` `0.900` (`27/30`, `TARa@5 = 50%`, prompt-level `t(5) = -1.00, p = 0.3632`; sign `1+/3-, p = 0.6250`). Because `n = 6` prompts is underpowered to independently prove a zero difference, `R-SYS-06` rests primarily on **T5** literature (`Zheng et al.`, `Basil et al.`).
 
 ### C-04: Instruction-Boundary vs Mid-Context Recall Trade-Off (`R-SYS-02`)
 - **Untested Design Trade-Off**: Placing bulky retrieved documents in the middle protects start-of-context invariants and end-of-context format constraints (`T5` primacy/recency) at the potential cost of weaker mid-context document retrieval (`Lost in the Middle`). Controlled ablation varying document position alongside adversarial boundary rules has not yet been executed here.
@@ -62,11 +63,11 @@ The following specific numbers and thresholds appeared in earlier versions of th
 
 ## 3. Open Research Hypotheses (`[NO EVIDENCE YET]` / `[ACTIVE HYPOTHESIS]`)
 
-*(Note: Phase B resolved former `H-01` via `PB-6` [`36.7%` -> `100.0%` at `effort="none"`, `p = 5.343e-08`], former `H-04` via `PB-2` [`0/30` -> `30/30` on assertive text, `p = 1.691e-17`], and former `H-05` via `PB-1` [no significant XML penalty once `[P0|P1|P2|P3]` wording bug was fixed].)*
+*(Note: Phases B and C resolved former `H-01` via `PB-6` [`0.367` -> `1.000` at `effort="none"`, prompt `t(5) = 3.12, p = 0.0261`; `4+/0-`, `sign p = 0.1250`], former `H-04` via counterbalanced `PC-1` [`0/80` -> `80/80` exclusive `second_tool` on assertive text across `16/16` prompts, `sign p = 3.052e-05`], and former `H-05` via `PB-1` [no significant XML penalty once `[P0|P1|P2|P3]` wording bug was fixed].)*
 
 ### H-02: Parameter Description Verbosity Ceiling & Attention Dilution
 - **Status**: **[NO EVIDENCE YET]**
-- **Context**: `TS-2` showed `GPT 6 Luna` fails on unstated custom formats (`geo_coordinates` no-space rule) while inferring standard ISO formats. The upper bound where verbose parameter descriptions bloat context or degrade sibling parameter accuracy remains unmeasured.
+- **Context**: `TS-2` (`N = 1` run/prompt) showed `GPT 6 Luna` fails on unstated custom spacing rules (`geo_coordinates` no-space rule) while inferring standard ISO formats. Replicating `TS-2` at `N >= 5` and measuring the upper bound where verbose parameter descriptions bloat context remains open.
 - **Test Design**: Vary description length (`10`, `30`, `60`, `120`, `250` tokens per parameter) across multi-argument tools with non-obvious format rules (`N >= 5` iterations).
 
 ### H-03: Markdown Syntax Inside JSON Tool Descriptions
@@ -84,6 +85,6 @@ The following specific numbers and thresholds appeared in earlier versions of th
 - **Context**: Untested hypothesis comparing JSON Schema tool declarations against TypeScript interface definitions on deeply nested inputs.
 - **Test Design**: Measure argument validity rate and token cost on nested object-array schemas across `N >= 5` runs per prompt.
 
-### H-08: Cross-Model Generalization on Latest Frontier Families
+### H-08: Cross-Model Generalization on Latest Frontier & Non-Reasoning Families
 - **Status**: **[NO EVIDENCE YET ON OUR ROUTER]**
-- **Context**: Empirical Phase A and Phase B runs (`708` total records) evaluated `GPT 6 Luna`. Direct empirical transfer to `Gemini 4 Hydrogen`, `Claude Fable 5.2`, `Claude Opus 5.5`, and `GPT 6.2 Astra` awaits multi-model gateway access.
+- **Context**: Empirical Phase A, B, and C suites (`1,188` benchmark records plus Eval Suite executions) evaluated `GPT 6 Luna` alone. Replicating `PC-1`, `PC-2`, higher-`N` `PB-6` (`n >= 16` prompts on a native non-reasoning model), and `N >= 5` `TS-2` across `Gemini 4 Hydrogen`, `Claude Fable 5.2`, `Claude Opus 5.5`, and `GPT 6.2 Astra` awaits multi-model gateway access.

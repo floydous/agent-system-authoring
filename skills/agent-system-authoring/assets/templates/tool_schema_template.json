@@ -1,27 +1,39 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "name": "execute_sql_query",
-  "description": "Executes a read-only SQL SELECT query against the structured customer analytics database (OpenAI strict: true schema template; for Anthropic/Gemini optionals see references/tool_schema_guide.md). Use this tool when retrieving relational metrics such as order counts, customer account statuses, or transaction histories. Do NOT use this tool for searching unstructured documentation or markdown guides; use search_knowledge_base instead. Only SELECT statements are permitted; queries are bounded by timeout_ms and reject mutating keywords.",
-  "strict": true,
-  "type": "object",
-  "properties": {
-    "rationale": {
-      "type": "string",
-      "description": "Concise supporting explanation for why this SQL query satisfies the request. Included first for non-reasoning models under constrained JSON decoding (R-TOOL-11, T4); optional when targeting native reasoning models."
-    },
-    "query": {
-      "type": "string",
-      "description": "Exact read-only SQL SELECT query string targeting documented analytics tables (no DDL or DML statements)."
-    },
-    "timeout_ms": {
-      "type": "integer",
-      "description": "Query execution timeout in integer milliseconds (e.g., 5000)."
+  "type": "function",
+  "function": {
+    "name": "execute_sql_query",
+    "description": "Executes a read-only SQL SELECT query against the structured customer analytics database. Use this tool when retrieving relational metrics such as order counts, customer account statuses, or transaction histories. Do NOT use this tool for searching unstructured documentation or markdown guides; use search_knowledge_base instead. Only SELECT statements are permitted; queries are bounded by timeout_ms and reject mutating keywords.",
+    "strict": true,
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "rationale": {
+          "type": "string",
+          "description": "Concise supporting explanation of why this SQL query answers the user's request and targets the appropriate tables."
+        },
+        "query": {
+          "type": "string",
+          "description": "Exact read-only SQL SELECT query targeting documented analytics tables (no DDL or DML statements)."
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "description": "Query execution timeout in integer milliseconds (e.g., 5000)."
+        },
+        "max_rows": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Maximum number of rows to return, or null to apply the default server limit."
+        }
+      },
+      "required": [
+        "rationale",
+        "query",
+        "timeout_ms",
+        "max_rows"
+      ],
+      "additionalProperties": false
     }
-  },
-  "required": [
-    "rationale",
-    "query",
-    "timeout_ms"
-  ],
-  "additionalProperties": false
+  }
 }

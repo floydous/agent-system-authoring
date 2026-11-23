@@ -1,7 +1,7 @@
 # Primary Source Verification Log
 
 **Audit Date**: 2026-11-22  
-**Purpose**: Records primary-source verification for every specification, vendor document, and peer-reviewed paper cited in `agent-system-authoring`. Under the repository evidence policy, quantitative metrics may appear in the skill only if recomputed from `evidence/raw/` traces or present in retrieved source text below.
+**Purpose**: Records primary-source verification for every specification, vendor document, and peer-reviewed paper cited in `agent-system-authoring`. Under the repository evidence policy, quantitative metrics may appear in the skill only if recomputed from `evidence/` traces (`raw/`, `raw_phase_b/`, `raw_phase_c/`, `raw_evals/`) or present in retrieved source text below.
 
 ---
 
@@ -26,7 +26,7 @@
 
 ### 1.3 Anthropic Skill Authoring Best Practices (`R-SKILL-03` third-person note)
 - **URL**: `https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices.md`
-- **Retrieved**: 2026-11-22 (via `bratroute` `web_extract`)
+- **Retrieved**: 2026-11-22 (web extraction)
 - **Verified Quote**: `"Always write in third person. The description is injected into the system prompt, and inconsistent point-of-view can cause discovery problems."` Also confirms max `64` chars for `name` and max `1,024` chars for `description`.
 
 ### 1.4 PEP 723 – Inline Script Metadata (`R-SKILL-06`)
@@ -44,7 +44,7 @@
 
 ### 1.6 Anthropic Structured Outputs & Strict Tool Use (`R-TOOL-10`)
 - **URL**: `https://platform.claude.com/docs/en/build-with-claude/structured-outputs` (referencing `https://platform.claude.com/docs/en/agents-and-tools/tool-use/strict-tool-use`)
-- **Retrieved**: 2026-11-22 (via `bratroute` `web_extract`)
+- **Retrieved**: 2026-11-22 (web extraction)
 - **Verified Quotes & Constraints**:
   - `strict: true` constraints: `required` and `"additionalProperties"` (`"must be set to false for objects"`) are supported, while optional parameters omitted from `required` are allowed (unlike OpenAI, where every property must be in `required`). Top-level `"strict": true` sits on the tool object alongside `input_schema`.
   - Documented compiled-grammar request limits across `output_config.format` and `strict: true` tools: `20` max strict tools per request; `24` max optional parameters (not listed in `required`) across all strict tool and JSON output schemas; `16` max parameters using union types (`anyOf` or `"type": ["string", "null"]`) across all strict schemas (`"These are especially expensive because they create exponential compilation cost"`). Guidance adds: `"Reduce optional parameters. Make parameters required where possible. Each optional parameter roughly doubles a portion of the grammar's state space."`
@@ -89,7 +89,7 @@
 
 ### 2.5 Google Gemini / Vertex AI Structured Outputs & Function Calling (`R-TOOL-06`, `R-TOOL-07`, `R-TOOL-10`)
 - **URL**: `https://aistudio.google.com/docs/structured-output` & `https://ai.google.dev/gemini-api/docs/function-calling`
-- **Retrieved**: 2026-11-22 (HTTP 200 direct fetch + `bratroute` `web_extract`)
+- **Retrieved**: 2026-11-22 (HTTP 200 direct fetch + web extraction)
 - **Verified Quotes**:
   - Function declarations: passed with `type: "function"`, `name`, `description`, and `parameters` (`type`, `properties`, `required` array of mandatory parameter names) — there is no OpenAI/Anthropic `"strict": true` toggle, and `"Only a subset of the OpenAPI schema is supported."` Optional parameters are normally omitted from `required`.
   - Complex schema / `any`-mode limits: `"When you use any mode or define complex parameter schemas, the API compiles your function declarations into a state machine that constrains token generation. This state machine enforces limits on total states, branching paths, and nesting depth. If the combined complexity of your tools exceeds these limits, the API rejects the request with a 400 INVALID_ARGUMENT error."`
@@ -100,7 +100,7 @@
 
 ## 3. Peer-Reviewed Literature & Preprints (Tier 4 & Tier 5)
 
-Retrieved via `bratroute` `web_extract` against `https://arxiv.org/abs/<id>` and `bratroute` `web_search` on ACL Anthology / PMLR on 2026-11-22.
+Retrieved via live web extraction against `https://arxiv.org/abs/<id>` and web search on ACL Anthology / PMLR on 2026-11-22.
 
 | Citation Key | Verified Title, Authors & Date | Verified Empirical Scope / Abstract Numbers | Discrepancies Corrected |
 | :--- | :--- | :--- | :--- |
@@ -110,7 +110,7 @@ Retrieved via `bratroute` `web_extract` against `https://arxiv.org/abs/<id>` and
 | `arXiv:2508.07479` | *Positional Biases Shift as Inputs Approach Context Window Limits* — Blerta Veseli, Julian Chibane, Mariya Toneva, Alexander Koller (Submitted 10 Aug 2025; COLM 2025) | LiM strongest up to `50%` of context window; beyond `50%`, primacy weakens and recency distance-based bias dominates. | Retained `50%` threshold; removed `>20% degradation avoided`. |
 | `arXiv:2404.13208` | *The Instruction Hierarchy* — Eric Wallace, Kai Xiao, Reimar Leike, Lilian Weng, Johannes Heidecke, Alex Beutel (Submitted 19 Apr 2024) | Tested on `GPT-3.5`; increases robustness against unseen attacks with minimal standard capability degradation. | Removed `up to 63% attack reduction` (not in abstract) and corrected models tested (`GPT-3.5`, not GPT-4/4o). |
 | `arXiv:2603.23530` | *Did You Forget What I Asked? Prospective Memory Failures in Large Language Models* — Avni Mittal (Submitted 7 Mar 2026, revised 11 Jun 2026; ACL Anthology) | 3 model families, >`8,000` prompts; drops `2–21%` under concurrent load, terminal constraints drop up to `50%`, trailing reminder restores `90–100%`; GSM8K dropped `93%` to `27%`. | Removed fabricated `>10 turns` threshold from rule statement. |
-| `arXiv:2209.12711` | *Can Large Language Models Truly Understand Prompts? A Case Study with Negated Prompts* — Joel Jang, Seonghyeon Ye, Minjoon Seo (Submitted 26 Sep 2022) | 9 tasks; inverse scaling on OPT (`125M–175B`), GPT-3, InstructGPT. | Removed `~50%` flatline claim (not in abstract); corrected OPT upper size (`175B`, not `66B`). Marked rule Contested per `SP-2`. |
+| `arXiv:2209.12711` | *Can Large Language Models Truly Understand Prompts? A Case Study with Negated Prompts* — Joel Jang, Seonghyeon Ye, Minjoon Seo (Submitted 26 Sep 2022) | 9 tasks; inverse scaling on OPT (`125M–175B`), GPT-3, InstructGPT. | Removed `~50%` flatline claim (not in abstract); corrected OPT upper size (`175B`, not `66B`). Promoted `R-SYS-05` to **T2** on `GPT 6 Luna` via `PB-4` and `PC-2` (refuting pre-2023 inverse scaling on explicit prohibitions). |
 | `arXiv:2512.05858` | *Prompting Science Report 4: Playing Pretend: Expert Personas Don't Improve Factual Accuracy* — Savir Basil, Ina Shapiro, Dan Shapiro, Ethan Mollick, Lilach Mollick, Lennart Meincke (Submitted 5 Dec 2025) | 6 models evaluated on GPQA Diamond and MMLU-Pro; expert & low-knowledge personas tested. | Removed false attribution of exact `0.0%` / `+19.4%` bloat; aligned with title + abstract. |
 | `arXiv:2311.10054` | *When "A Helpful Assistant" Is Not Really Helpful* — Mingqian Zheng, Jiaxin Pei, Lajanugen Logeswaran, Moontae Lee, David Jurgens (Submitted 16 Nov 2023, revised 9 Oct 2024) | `162` roles across `6` relationship types and `8` domains; `4` LLM families; `2,410` factual questions; personas do not improve overall performance over no-persona control. | Exact match verified. |
 | `arXiv:2505.11423` | *When Thinking Fails: The Pitfalls of Reasoning for Instruction-Following in LLMs* — Xiaomin Li, Zhou Yu, Zhiwei Zhang, Xupeng Chen, Ziji Zhang, Yingying Zhuang, Narayanan Sadagopan, Anurag Beniwal (Submitted 16 May 2025, revised 2 Sep 2025) | `15` models across `IFEval` and `ComplexBench`; consistent drops with CoT prompting. | Removed unverified `13 of 14 models` and `-16.2 pp on Llama-3-8B`. |
@@ -118,12 +118,12 @@ Retrieved via `bratroute` `web_extract` against `https://arxiv.org/abs/<id>` and
 | `arXiv:2604.18389` | *Understanding the Prompt Sensitivity* — Yang Liu, Chenhui Chu (Submitted 20 Apr 2026) | Taylor expansion / logit variance analysis: prompt templates exert greater influence on logits than questions themselves. | Exact match verified. |
 | `arXiv:2509.13196` | *The Few-shot Dilemma: Over-prompting Large Language Models* — Yongjian Tang, Doruk Tuncel, Christian Koerner, Thomas Runkler (Submitted 16 Sep 2025, revised 26 Jul 2026) | GPT-4o, GPT-3.5-turbo, DeepSeek-V3, Gemma-3, LLaMA-3.1, LLaMA-3.2, Mistral; excessive examples can degrade performance. | Removed fabricated `k ∈ [2, 4]` and `>85%` claims. |
 | `arXiv:2602.04297` | *Revisiting Prompt Sensitivity in LLMs for Text Classification* — Branislav Pecher, Michal Spiegel, Robert Belanec, Jan Cegin (Submitted 4 Feb 2026) | Studies prompt underspecification variance in text classification (not few-shot rule overriding). | Removed from `R-SYS-09` conflicting-example justification; replaced with Camassa & Shiller (`2605.20382`, May 2026) & OpenAI guide. |
-| `arXiv:2605.20382` | *Do as I Say, Not as I Do: Instruction-Induction Conflict in LLMs* — Carolina Camassa, Derek Shiller (Submitted 19 May 2026, via `bratroute` `web_search`) | `13` models, `16` instructions; hardcoded conflicting assistant examples drop grand-mean IF rate to `27%` (fixed-output) / `43%` (task-based). | Added as verified support for keeping few-shot examples aligned with written constraints. |
+| `arXiv:2605.20382` | *Do as I Say, Not as I Do: Instruction-Induction Conflict in LLMs* — Carolina Camassa, Derek Shiller (Submitted 19 May 2026, via web search) | `13` models, `16` instructions; hardcoded conflicting assistant examples drop grand-mean IF rate to `27%` (fixed-output) / `43%` (task-based). | Added as verified support for keeping few-shot examples aligned with written constraints. |
 | `arXiv:2506.09501` | *Understanding and Mitigating Numerical Sources of Nondeterminism in LLM Inference* — Jiayi Yuan, Hao Li, Xinheng Ding, Wenya Xie, Yu-Jhe Li, Wentian Zhao, Kun Wan, Jing Shi, Xia Hu, Zirui Liu (Submitted 11 Jun 2025, revised 24 Oct 2025) | Floating-point non-associativity under BF16 greedy decoding; `DeepSeek-R1-Distill-Qwen-7B` showed up to `9%` accuracy variation and `9,000` token length difference across GPU/batch configs. | Verified `9%` and `9,000` token numbers directly in abstract. |
 | `arXiv:2408.04667` | *Non-Determinism of "Deterministic" LLM Settings* — Berk Atil, Sarp Aykent, Alexa Chittams et al. (Submitted 6 Aug 2024, revised 2 Apr 2025; Eval4NLP) | `5` LLMs, `8` tasks, `10` runs; up to `15%` accuracy variation and up to `70%` best-worst gap; defines `TARr@N` and `TARa@N`. | Exact match verified. |
 | `arXiv:2510.14972` | *TokDrift: When LLM Speaks in Subwords but Code Speaks in Grammar* — Yinxi Li, Yuntian Deng, Pengyu Nie (Submitted 16 Oct 2025) | `9` code LLMs (`>30B` params included); superficial formatting / identifier naming shifts BPE segmentation and model behavior. | Removed unverified `15%–40% fertility` and noted tool-call accuracy impact was not directly measured (`snake_case` is a convention on top of this T4 mechanism). |
-| ACL `2026.acl-long.915` | *SubTokenTest: A Practical Benchmark for Real-World Sub-token Understanding* — Shuyang Hou, Yi Hu, Muhan Zhang (ACL 2026 Main, via `bratroute` `web_search`) | `9` LLMs across `10` tasks / `4` domains; isolates subword tokenization failures. | Removed wrong venue/model attribution. |
-| ACL `2025.ijcnlp-short.31` | *Broken Words, Broken Performance* — Sachin Pawar, Manoj Apte, Kshitij Jadhav, Girish Keshav Palshikar, Nitin Ramrakhiyani (IJCNLP-AACL 2025, via `bratroute` `web_search`) | `4` open-source LLMs, `7` tasks; higher Contextual Penalty correlates with incorrect outputs (`17/28` dataset-LLM pairs at p<0.05). | Fixed exact venue to IJCNLP-AACL 2025 and cited retrieved metrics. |
+| ACL `2026.acl-long.915` | *SubTokenTest: A Practical Benchmark for Real-World Sub-token Understanding* — Shuyang Hou, Yi Hu, Muhan Zhang (ACL 2026 Main, via web search) | `9` LLMs across `10` tasks / `4` domains; isolates subword tokenization failures. | Removed wrong venue/model attribution. |
+| ACL `2025.ijcnlp-short.31` | *Broken Words, Broken Performance* — Sachin Pawar, Manoj Apte, Kshitij Jadhav, Girish Keshav Palshikar, Nitin Ramrakhiyani (IJCNLP-AACL 2025, via web search) | `4` open-source LLMs, `7` tasks; higher Contextual Penalty correlates with incorrect outputs (`17/28` dataset-LLM pairs at p<0.05). | Fixed exact venue to IJCNLP-AACL 2025 and cited retrieved metrics. |
 | `arXiv:2408.04682` | *ToolSandbox: A Stateful, Conversational, Interactive Evaluation Benchmark for LLM Tool Use Capabilities* — **Jiarui Lu**, Thomas Holleis, Yizhe Zhang et al. (Submitted 8 Aug 2024, revised 16 Apr 2025; NAACL 2025 Findings) | Includes "Tool name scrambling" (`send_message` -> `messages_0`) & removing argument descriptions; tested GPT-4, GPT-4o, Claude-3-Sonnet, Gemini-1.5. | Fixed wrong first author (`"Sun et al."` -> **`Lu et al.`**); removed unverified `>30%` delta. |
 | BFCL / ICML 2025 | *The Berkeley Function Calling Leaderboard (BFCL)* — Shishir G. Patil, Huanzhi Mao, Fanjia Yan, Charlie Cheng-Jie Ji, Vishnu Suresh, Ion Stoica, Joseph E. Gonzalez (ICML 2025, PMLR v267; `https://gorilla.cs.berkeley.edu/leaderboard.html`) | Evaluates AST tool execution, multi-turn, and abstention (irrelevance). | Removed unverified `40% false-positive invocations`; merged `R-TOOL-09` into `R-TOOL-03`. |
 | `arXiv:2602.20426` | *Learning to Rewrite Tool Descriptions for Reliable LLM-Agent Tool Use* — Ruocheng Guo, Kaiwen Dong, Xiang Gao, Kamalika Das (Submitted 23 Feb 2026, revised 29 Apr 2026) | `150+` candidate tools; reduces scaling degradation by `29.23%` and improves average query-level success by `60.89%` on StableToolBench. | Exact match verified. |
