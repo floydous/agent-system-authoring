@@ -1,6 +1,6 @@
 # Primary Source Verification Log
 
-**Audit Date**: 2026-11-22  
+**Audit Date**: 2026-11-22 (with 2026-11-23 JSON Schema validation-keyword addenda)  
 **Purpose**: Records primary-source verification for every specification, vendor document, and peer-reviewed paper cited in `agent-system-authoring`. Under the repository evidence policy, quantitative metrics may appear in the skill only if recomputed from `evidence/` traces (`raw/`, `raw_phase_b/`, `raw_phase_c/`, `raw_evals/`) or present in retrieved source text below.
 
 ---
@@ -34,19 +34,26 @@
 - **Retrieved**: 2026-11-22 (HTTP 200 direct fetch)
 - **Verified Quote**: Example metadata block uses `# /// script`, `# requires-python = ...`, `# dependencies = [...]`, `# ///`. Document defines top-level keys `dependencies`, `requires-python`, and optional `[tool]` table.
 
-### 1.5 OpenAI Structured Outputs Guide (`R-TOOL-06`, `R-TOOL-07`, `R-TOOL-10`)
+### 1.5 OpenAI Structured Outputs Guide (`R-TOOL-05`, `R-TOOL-06`, `R-TOOL-07`, `R-TOOL-10`)
 - **URL**: `https://developers.openai.com/api/docs/guides/structured-outputs.md` (redirected from `https://platform.openai.com/docs/guides/structured-outputs`)
-- **Retrieved**: 2026-11-22 (HTTP 200 direct fetch)
+- **Retrieved**: 2026-11-22 & 2026-11-23 (HTTP 200 direct fetch)
 - **Verified Quotes**:
   - `strict: true` constraints: `"additionalProperties: false must always be set in objects"` and `"All fields must be required"`, using nullable union types (`"anyOf"` or `["string", "null"]`) to emulate optional parameters.
+  - Supported JSON Schema validation keywords (retrieved 2026-11-23):
+    - `string`: `"pattern"` (regex) and `"format"` (`date-time`, `time`, `date`, `duration`, `email`, `hostname`, `ipv4`, `ipv6`, `uuid`). `minLength`/`maxLength` are not listed in supported string properties.
+    - `number` / `integer`: `"multipleOf"`, `"maximum"`, `"exclusiveMaximum"`, `"minimum"`, `"exclusiveMinimum"`.
+    - `array`: `"minItems"`, `"maxItems"`. *(Note: these type-specific constraints are marked not yet supported for fine-tuned models.)*
   - Enum support & documented numeric limits: `"A schema may have up to 1000 enum values across all enum properties. For a single enum property with string values, the total string length of all enum values cannot exceed 15,000 characters when there are more than 250 enum values."` Also: up to `5000` object properties total, up to `10` levels of nesting, max `120,000` total string chars across property/definition/enum/const names.
-- **Remediations Applied**: Removed invented `≤ 20` enum threshold and fabricated `+15–25 pp` / `10%–25%` figures from `R-TOOL-06`; grounded large-enum guidance in OpenAI's documented `250`/`1000`/`15,000` bounds plus Google's state-machine rejection doc (`R-TOOL-07`).
+- **Remediations Applied**: Removed invented `≤ 20` enum threshold and fabricated `+15–25 pp` / `10%–25%` figures from `R-TOOL-06`; grounded large-enum guidance in OpenAI's documented `250`/`1000`/`15,000` bounds plus Google's state-machine rejection doc (`R-TOOL-07`); documented natively enforced OpenAI validation keywords (`pattern`, `format`, numeric bounds, array bounds).
 
-### 1.6 Anthropic Structured Outputs & Strict Tool Use (`R-TOOL-10`)
+### 1.6 Anthropic Structured Outputs & Strict Tool Use (`R-TOOL-05`, `R-TOOL-10`)
 - **URL**: `https://platform.claude.com/docs/en/build-with-claude/structured-outputs` (referencing `https://platform.claude.com/docs/en/agents-and-tools/tool-use/strict-tool-use`)
-- **Retrieved**: 2026-11-22 (web extraction)
+- **Retrieved**: 2026-11-22 & 2026-11-23 (web extraction)
 - **Verified Quotes & Constraints**:
   - `strict: true` constraints: `required` and `"additionalProperties"` (`"must be set to false for objects"`) are supported, while optional parameters omitted from `required` are allowed (unlike OpenAI, where every property must be in `required`). Top-level `"strict": true` sits on the tool object alongside `input_schema`.
+  - JSON Schema validation keyword limitations (retrieved 2026-11-23):
+    - Supported: string `format` (`date-time`, `time`, `date`, `duration`, `email`, `hostname`, `uri`, `ipv4`, `ipv6`, `uuid`), array `minItems` (`0` and `1` only), and simple regex `pattern` (`*`, `+`, `?`, simple `{n,m}`, character classes, groups — no backreferences `\1`/`\2`, lookahead/lookbehind `(?=...)`/`(?!...)`, word boundaries `\b`/`\B`, or complex `{n,m}` large ranges).
+    - **Not supported** (triggers HTTP `400`): `"Numerical constraints (such as minimum, maximum, multipleOf)"`, `"String constraints (minLength, maxLength)"`, `"Array constraints beyond minItems of 0 or 1"`. Official SDK helpers transform unsupported constraints by removing them from the wire schema, appending them to field `description`s (e.g., `{minimum: 100}`), and validating responses client-side.
   - Documented compiled-grammar request limits across `output_config.format` and `strict: true` tools: `20` max strict tools per request; `24` max optional parameters (not listed in `required`) across all strict tool and JSON output schemas; `16` max parameters using union types (`anyOf` or `"type": ["string", "null"]`) across all strict schemas (`"These are especially expensive because they create exponential compilation cost"`). Guidance adds: `"Reduce optional parameters. Make parameters required where possible. Each optional parameter roughly doubles a portion of the grammar's state space."`
   - Property ordering caveat: `"When using structured outputs, properties in objects maintain their defined ordering from your schema, with one important caveat: required properties appear first, followed by optional properties."` (`"If property order in the output is important to your application, mark all properties as required, or account for this reordering in your parsing logic."`)
   - Enum capitalization caveat: Anthropic docs note case-insensitive enum matching may emit mismatched capitalization (e.g., `"Conversation Topic 3"`) without error, advising callers to compare case-insensitively and avoid enum values differing only by capitalization.
@@ -87,11 +94,12 @@
   - Also references `gpt-6-luna` and `gpt-6.2-astra` in `reasoning.md`.
 - **Remediations Applied**: Removed `"officially deprecates"`.
 
-### 2.5 Google Gemini / Vertex AI Structured Outputs & Function Calling (`R-TOOL-06`, `R-TOOL-07`, `R-TOOL-10`)
-- **URL**: `https://aistudio.google.com/docs/structured-output` & `https://ai.google.dev/gemini-api/docs/function-calling`
-- **Retrieved**: 2026-11-22 (HTTP 200 direct fetch + web extraction)
+### 2.5 Google Gemini / Vertex AI Structured Outputs & Function Calling (`R-TOOL-05`, `R-TOOL-06`, `R-TOOL-07`, `R-TOOL-10`)
+- **URL**: `https://aistudio.google.com/docs/structured-output`, `https://ai.google.dev/gemini-api/docs/structured-output`, & `https://ai.google.dev/gemini-api/docs/function-calling`
+- **Retrieved**: 2026-11-22 & 2026-11-23 (HTTP 200 direct fetch + web extraction)
 - **Verified Quotes**:
   - Function declarations: passed with `type: "function"`, `name`, `description`, and `parameters` (`type`, `properties`, `required` array of mandatory parameter names) — there is no OpenAI/Anthropic `"strict": true` toggle, and `"Only a subset of the OpenAPI schema is supported."` Optional parameters are normally omitted from `required`.
+  - Documented JSON Schema subset & ignored keywords (retrieved 2026-11-23): enforces `minimum` and `maximum` (for `number`/`integer`), `format` (such as `date-time`, `date`, `time` for `string`), and `minItems`/`maxItems` (for `array`). Silently strips and ignores `minLength`, `maxLength`, `minProperties`, `maxProperties`, `uniqueItems`, `contains`, `minContains`, and `maxContains` during request normalization (`pattern` is not listed in the supported `string` subset — validate client-side when needed).
   - Complex schema / `any`-mode limits: `"When you use any mode or define complex parameter schemas, the API compiles your function declarations into a state machine that constrains token generation. This state machine enforces limits on total states, branching paths, and nesting depth. If the combined complexity of your tools exceeds these limits, the API rejects the request with a 400 INVALID_ARGUMENT error."`
   - Schema simplification guidance: `"Move non-structural rules to descriptions: Field description properties and system instructions guide the model without adding states to the output grammar."` Further advises: `"Split large tool sets and move rules to descriptions"`, `"Flatten nested objects and bound recursion"`, `"Reduce branching from optional fields, enums, and anyOf: ... Mark properties as required where possible and allow null values when a field can be empty"`, and `"Shorten property names and drop array bounds"`.
   - Note: Google docs do NOT specify a `>20–50` enum cutoff or a `>30%` accuracy drop; both numbers were deleted.

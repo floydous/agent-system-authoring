@@ -23,5 +23,5 @@ jobs:
       - name: Verify offline statistical recomputation (Phase A, B & C)
         run: python -B evidence/recompute_stats.py --check
 
-      - name: Verify Eval Suite v3 report reproducibility
+      - name: Verify Eval Suite v4 report reproducibility
         run: python -B evidence/run_evals.py --rescore-only --check

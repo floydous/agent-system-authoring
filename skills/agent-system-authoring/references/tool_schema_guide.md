@@ -60,16 +60,18 @@ This guide documents rules for designing tool and function schemas (JSON Schema,
 
 ---
 
-### R-TOOL-05: Parameter Descriptions for Non-Universal Formats & Conventions
-- **Evidence Tier**: **T2 (Measured on `GPT 6 Luna`, narrowed; Phase A `N = 1`)** + **T5** (`ToolSandbox`)
+### R-TOOL-05: Parameter Descriptions & Provider-Supported Structural Constraints
+- **Evidence Tier**: **T2 (Measured on `GPT 6 Luna`, narrowed; Phase A `N = 1`)** + **T1 (Verified Provider JSON Schema Subsets)** + **T5** (`ToolSandbox`)
 - **Primary Citations**:
   - `TS-2` in [stats_recomputed.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/stats_recomputed.md) (`evidence/raw/results_TS-2.jsonl`).
+  - OpenAI / Anthropic / Gemini JSON Schema validation-keyword checks (retrieved 2026-11-23, [source_checks.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/source_checks.md)).
   - Lu et al. (ToolSandbox, NAACL 2025 Findings), [arXiv:2408.04682](https://arxiv.org/abs/2408.04682).
 - **Models Tested**: `GPT 6 Luna (xhigh)` (`TS-2`, `15` matched prompts, `N = 1` run/prompt — not yet replicated at `N >= 5`); `GPT-4`, `GPT-4o`, `Claude-3-Sonnet`, `Gemini-1.5` (ToolSandbox).
 - **Verified `T2` Finding (`TS-2`, Phase A single-run exploratory suite)**:
   When parameter format descriptions were omitted on `GPT 6 Luna (xhigh)`, universally standardized formats were mostly inferred (`timestamp_valid` ISO 8601 UTC: `15/15`; `currency_valid` ISO 4217: `12/15` vs `15/15`, matched-pair exact sign `p = 0.2500`). For `geo_coordinates`, the baseline still emitted valid decimal coordinates on `15/15` prompts (e.g., `"37.7793, -122.4192"`) and failed **`0/15` vs `15/15`** solely on the unstated no-space convention `"lat,lon"` (matched-pair exact sign / McNemar **`p = 6.104e-05`**; `all_fields_valid` **`p = 6.104e-05`**). Descriptive schemas also lowered mean reasoning tokens from `39.1` to `21.1` (`t(14) = -4.95`, `p = 0.0002`).
 - **Schema Directive**:
-  - Provide an explicit `description` for every parameter, prioritizing exact syntax examples, spacing rules, units, timezones, and bounds for any convention not universally standardized.
+  - Provide an explicit `description` for every parameter, stating exact syntax examples, spacing rules (e.g., `"lat,lon"`), units, timezones, and bounds.
+  - Pair descriptions with **provider-supported** JSON Schema validation keywords (see `R-TOOL-10` keyword matrix: e.g., `pattern`, `format`, `minimum`/`exclusiveMinimum`/`maximum`, `minItems`/`maxItems` under OpenAI `strict: true`; avoid Anthropic `400`-rejected `minimum`/`maximum`/`minLength`/`maxLength`).
 
 ---
 
@@ -117,22 +119,22 @@ This guide documents rules for designing tool and function schemas (JSON Schema,
 ### R-TOOL-10: Provider-Scoped Strict JSON Schema Conformance
 - **Evidence Tier**: **T1 (Verified Fact — Provider API Specifications)**
 - **Primary Citations**:
-  - OpenAI Structured Outputs (`Supported schemas`, retrieved 2026-11-22), [developers.openai.com](https://developers.openai.com/api/docs/guides/structured-outputs).
-  - Anthropic Structured Outputs & Strict Tool Use (retrieved 2026-11-22), [platform.claude.com](https://platform.claude.com/docs/en/build-with-claude/structured-outputs).
-  - Google Gemini Function Calling (retrieved 2026-11-22), [ai.google.dev](https://ai.google.dev/gemini-api/docs/function-calling).
+  - OpenAI Structured Outputs (`Supported schemas`, retrieved 2026-11-22 & 2026-11-23), [developers.openai.com](https://developers.openai.com/api/docs/guides/structured-outputs).
+  - Anthropic Structured Outputs & Strict Tool Use (retrieved 2026-11-22 & 2026-11-23), [platform.claude.com](https://platform.claude.com/docs/en/build-with-claude/structured-outputs).
+  - Google Gemini Structured Outputs & Function Calling (retrieved 2026-11-22 & 2026-11-23), [ai.google.dev](https://ai.google.dev/gemini-api/docs/function-calling).
   - Nguyen, Silva, Zumot, Tupikina, Aghasaryan, & Alam (Jan 2026), *Thinking Before Constraining*, [arXiv:2601.07525](https://arxiv.org/abs/2601.07525).
 - **Verified Provider Matrix**:
-  Strict-mode and top-level wrapper shapes differ by provider—never bundle raw JSON Schema keywords directly as siblings of `"name"`/`"strict"` or apply OpenAI-only rules universally:
-  1. **OpenAI Chat Completions (`"strict": true`)**: `{"type": "function", "function": {"name": "...", "description": "...", "strict": true, "parameters": {"type": "object", "properties": {...}, "required": [...all keys...], "additionalProperties": false}}}`. Optional fields use nullable unions (`["string", "null"]` or `"anyOf"`).
-  2. **OpenAI Responses API (`"strict": true`)**: Flat wrapper `{"type": "function", "name": "...", "description": "...", "strict": true, "parameters": {...}}` with the same `additionalProperties: false` + all-keys-`required` rule inside `parameters`.
-  3. **Anthropic (`"strict": true`)**: Uses `"input_schema"` instead of `"parameters"`: `{"name": "...", "description": "...", "strict": true, "input_schema": {"type": "object", "properties": {...}, "required": [...mandatory only...], "additionalProperties": false}}` (max `20` strict tools, `24` optional params, and `16` unions per request across compiled grammars; note `required` keys emit before optional keys regardless of declaration order).
-  4. **Google Gemini Function Calling**: Declaration `{"name": "...", "description": "...", "parameters": {"type": "object", "properties": {...}, "required": [...mandatory only...]}}` (OpenAPI subset, no `"strict": true` toggle; mark fields `required` with nullable types only if grammar branching causes `400 INVALID_ARGUMENT`).
+  Strict-mode wrapper shapes and supported validation keywords differ by provider—never bundle raw JSON Schema keywords directly as siblings of `"name"`/`"strict"` or assume one provider's keyword subset works everywhere:
+  1. **OpenAI Chat Completions (`"strict": true`)**: `{"type": "function", "function": {"name": "...", "description": "...", "strict": true, "parameters": {"type": "object", "properties": {...}, "required": [...all keys...], "additionalProperties": false}}}`. Optional fields use nullable unions (`["string", "null"]` or `"anyOf"`). Enforces `pattern`, `format` (`date-time`, `time`, `date`, `duration`, `email`, `hostname`, `ipv4`, `ipv6`, `uuid`), `minimum`/`maximum`/`exclusiveMinimum`/`exclusiveMaximum`/`multipleOf`, and `minItems`/`maxItems` (`minLength`/`maxLength` are not supported).
+  2. **OpenAI Responses API (`"strict": true`)**: Flat wrapper `{"type": "function", "name": "...", "description": "...", "strict": true, "parameters": {...}}` with the same `additionalProperties: false`, all-keys-`required`, and validation-keyword support inside `parameters`.
+  3. **Anthropic (`"strict": true`)**: Uses `"input_schema"` instead of `"parameters"`: `{"name", "description", "strict": true, "input_schema": {"type": "object", "properties": {...}, "required": [...mandatory only...], "additionalProperties": false}}` (caps: `20` strict tools / `24` optional params / `16` unions; `required` keys emit before optional keys). Supports `format`, simple `pattern` (no backreferences, lookarounds, `\b`/`\B`, or large `{n,m}`), and `minItems` (`0`/`1` only). **Rejects with HTTP `400`**: `minimum`, `maximum`, `multipleOf`, `minLength`, `maxLength`, `maxItems` — keep unsupported bounds in `description` + client-side validation.
+  4. **Google Gemini Function Calling**: Declaration `{"name": "...", "description": "...", "parameters": {"type": "object", "properties": {...}, "required": [...mandatory only...]}}` (OpenAPI subset, no `"strict": true` toggle). Enforces `minimum`, `maximum`, `format` (`date-time`, `date`, `time`), `minItems`, `maxItems`; silently strips `minLength`, `maxLength`, `minProperties`, `maxProperties`, `uniqueItems`, and does not list `pattern` as supported. Mark fields `required` with nullable types only if grammar branching causes `400 INVALID_ARGUMENT`.
 - **Schema Directive**:
-  - Match your target provider's exact wire wrapper (`function.parameters` vs top-level `parameters` vs `input_schema`), set `"additionalProperties": false` where strict validation is supported, and apply `"required"` + nullable-union conventions per provider.
+  - Match your target provider's exact wire wrapper (`function.parameters` vs top-level `parameters` vs `input_schema`), set `"additionalProperties": false` and `"required"` conventions per provider, and attach structural validation keywords only within that provider's supported subset (putting unsupported bounds in `description` + client validation).
 
 ---
 
-### R-TOOL-11: In-Schema `rationale` Field When Pre-Emission Thinking Is Absent
+### R-TOOL-11: In-Schema `rationale` Field Strictly When Pre-Emission Thinking Is Absent
 - **Evidence Tier**: **T2 (Measured on `GPT 6 Luna`, `PB-6`)** + **T4 (Mechanism: autoregressive left-to-right constrained decoding)**
 - **Primary Citations**:
   - `PB-6` (`reasoning_effort = "none"`) & `TS-3` (`xhigh`) in [stats_recomputed.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/stats_recomputed.md).
@@ -144,7 +146,8 @@ This guide documents rules for designing tool and function schemas (JSON Schema,
 - **T3 Anthropic Refusal Caveat**:
   Anthropic warns: *"If a parameter asks Claude why it is making the call, ask for a short explanation or the supporting evidence. A parameter that asks for the model's thinking or step-by-step reasoning might lead to a `reasoning_extraction` refusal."*
 - **Schema Directive**:
-  - When targeting non-reasoning models or minimal/zero reasoning effort under strict JSON mode on multi-step calculations, place a concise `"rationale"` (supporting explanation, not `"step-by-step thinking"`) first in `properties`—without sacrificing explicit domain formulas, date intervals, units, or numeric bounds on sibling parameters (see [tool_schema_template.json](../assets/templates/tool_schema_template.json)). Optional on high-effort native reasoning models.
+  - **Do NOT add a `"rationale"` parameter to general tools built for standard reasoning models** (it wastes output tokens and adds schema clutter; start from [tool_schema_template.json](../assets/templates/tool_schema_template.json)).
+  - **ONLY when targeting non-reasoning models or `reasoning_effort = "none"`** constrained decoding on multi-step calculations/routing, place a concise `"rationale"` (supporting explanation, never `"step-by-step thinking"`) **first** in `properties`, keeping exact domain formulas, date intervals, units, and numeric bounds on sibling parameters (start from [tool_schema_zero_reasoning_template.json](../assets/templates/tool_schema_zero_reasoning_template.json)).
 
 ---
 

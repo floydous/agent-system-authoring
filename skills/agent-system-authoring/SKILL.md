@@ -1,10 +1,10 @@
 ---
 name: agent-system-authoring
-description: Authors and audits AI agent instructions, multi-provider tool/function definitions, and portable Agent Skills grounded in open specs and empirical testing. Use whenever writing, reviewing, tightening, or troubleshooting LLM system guidance, strict tool schemas across OpenAI/Anthropic/Gemini, tool-selection conflicts, lexical exclusions, or Agent Skill packages—even when the user speaks in plain language without jargon.
+description: Authors and audits LLM system prompts, AI agent function-calling tool definitions (OpenAI, Anthropic, Gemini), and portable Agent Skill packages. Use when writing, refactoring, evaluating, or troubleshooting bot behavioral rules, prompt-injection boundaries, word exclusions, LLM tool-calling arguments or descriptions, or reusable Agent Skill folders—even in plain language without jargon. Do not use for general HTTP/REST API specs, app-config schemas, or application code.
 license: MIT
 metadata:
   author: "floydous"
-  version: "1.2.0"
+  version: "1.3.0"
 ---
 
 # Agent System Authoring
@@ -27,14 +27,14 @@ Follow these directives to author production system prompts, multi-provider tool
 ### Step 2: Author Multi-Provider Tool & Function Schemas
 1. **Name semantically in `snake_case` (`R-TOOL-01` T4, `R-TOOL-02` T5)**: Use clear `[verb]_[noun]` names (service-prefixed if multi-service), never opaque IDs.
 2. **Write neutral 3–4+ sentence descriptions (`R-TOOL-03` T3, `R-TOOL-04` T2)**: State purpose, positive triggers, sister-tool negative boundaries, parameters, and caveats; omit promotional superlatives (`"best"`, `"preferred"`).
-3. **Specify formats & domain math (`R-TOOL-05`, T2)**: Put exact syntax examples, no-space separators (e.g., `"lat,lon"`), units (`cents`, `ms`), date-interval conventions (`[start, end)`), formulas, and bounds in parameter `description`s.
+3. **Pair descriptions with provider-supported structural constraints (`R-TOOL-05` T2, `R-TOOL-10` T1)**: Put exact syntax examples, no-space separators (e.g., `"lat,lon"`), units (`cents`, `ms`), date-interval conventions (`[start, end)`), formulas, and bounds in parameter `description`s, AND add structural JSON Schema keywords where supported: on **OpenAI `strict: true`**, encode `pattern`, `format`, `minimum`/`exclusiveMinimum`/`maximum`, and `minItems`/`maxItems`; on **Anthropic `strict: true`**, use only simple `pattern`, `format`, and `minItems` (`0`/`1`), moving `minimum`/`maximum`/`minLength`/`maxLength` to `description` + client validation (those keywords trigger HTTP `400`); on **Gemini**, use `minimum`, `maximum`, `format`, and `minItems`/`maxItems`.
 4. **Constrain closed sets & prune catalogs (`R-TOOL-06` T1, `R-TOOL-07` T3, `R-TOOL-08` T4)**: Use `enum` for small closed sets; replace giant enums near grammar caps with a `string` + search tool; consolidate actions and re-anchor invariants past 50% context (`R-TOOL-12`, T5).
 5. **Match exact provider wire shapes (`R-TOOL-10`, T1)** (never mix `"name"`/`"strict"` directly alongside `"$schema"`/`"properties"`):
    - **OpenAI Chat (`strict: true`)**: `{"type": "function", "function": {"name", "description", "strict": true, "parameters": {"type": "object", "properties", "required": [<all keys>], "additionalProperties": false}}}` (nullable unions for optionals).
-   - **OpenAI Responses (`strict: true`)**: `{"type": "function", "name", "description", "strict": true, "parameters": {...}}` (`additionalProperties: false`, all keys `required`).
+   - **OpenAI Responses (`strict: true`)**: Flat wrapper `{"type": "function", "name", "description", "strict": true, "parameters": {...}}` (`additionalProperties: false`, all keys `required`).
    - **Anthropic (`strict: true`)**: `{"name", "description", "strict": true, "input_schema": {"type": "object", "properties", "required": [<mandatory only>], "additionalProperties": false}}` (caps: `20` strict tools / `24` optionals / `16` unions; required emit first).
    - **Gemini**: `{"name", "description", "parameters": {"type": "object", "properties", "required": [<mandatory only>]}}` (no `"strict": true`).
-6. **Order `rationale` first for zero/non-reasoning constrained decoding (`R-TOOL-11`, T2 + T4)**: When pre-emission thinking is absent or `reasoning_effort="none"`, place `"rationale"` first (never `"step-by-step thinking"`), keeping exact domain formulas and bounds on sibling fields. Starter: [assets/templates/tool_schema_template.json](assets/templates/tool_schema_template.json).
+6. **Reserve `rationale`-first strictly for zero/non-reasoning constrained decoding (`R-TOOL-11`, T2 + T4)**: **Omit `"rationale"` on standard reasoning-model tools.** Add `"rationale"` FIRST (never `"step-by-step thinking"`) ONLY when pre-emission thinking is absent or `reasoning_effort="none"`, keeping exact domain formulas and bounds on sibling fields. Starters: [assets/templates/tool_schema_template.json](assets/templates/tool_schema_template.json) (default) & [assets/templates/tool_schema_zero_reasoning_template.json](assets/templates/tool_schema_zero_reasoning_template.json) (zero-reasoning).
 
 ### Step 3: Design, Verify & Evaluate Agent Skills
 1. **Follow open-spec layout (`R-SKILL-01`–`04`, T1)**: Root `SKILL.md` (`< 500` lines, `< 5000` tokens), optional lowercase `scripts/`, `references/`, `assets/` with one-hop links (no `../`), kebab-case `name`, third-person `what + when` `description`. Starter: [assets/templates/skill_template.md](assets/templates/skill_template.md).
@@ -47,4 +47,4 @@ Follow these directives to author production system prompts, multi-provider tool
 - [references/skill_design_guide.md](references/skill_design_guide.md) — Agent Skills spec (`R-SKILL-01`–`06`) & eval design.
 - [references/evidence_ledger.md](references/evidence_ledger.md) & [references/empirical_results.md](references/empirical_results.md) — Master tier ledger & Phase A/B/C measurements.
 - [references/debunked_folklore.md](references/debunked_folklore.md) & [references/unverified_hypotheses.md](references/unverified_hypotheses.md) — Refuted claims & open hypotheses.
-- [scripts/verify_skill.py](scripts/verify_skill.py) & [evals/evals.json](evals/evals.json) — Offline validator & Eval Suite v3 definitions.
+- [scripts/verify_skill.py](scripts/verify_skill.py) & [evals/evals.json](evals/evals.json) — Offline validator & Eval Suite v4 definitions.

@@ -1,0 +1,45 @@
+{
+  "type": "function",
+  "function": {
+    "name": "compute_sla_credit",
+    "description": "Computes and issues an SLA uptime breach credit for a cloud tenant using zero-thinking or constrained JSON decoding. Use this tool when calculating SLA penalty credits across a monthly window in integer cents from verified outage minutes and monthly fee inputs. Do NOT use this tool for general billing SQL lookups; use query_account_ledger instead. Only credits >= 0 cents with valid YYYY-MM-DD interval bounds are accepted.",
+    "strict": true,
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "rationale": {
+          "type": "string",
+          "description": "Concise supporting explanation of the inputs and arithmetic before emitting final values."
+        },
+        "period_start_date": {
+          "type": "string",
+          "format": "date",
+          "description": "Inclusive ISO 8601 UTC start date (YYYY-MM-DD) for the half-open interval [period_start_date, period_end_date)."
+        },
+        "period_end_date": {
+          "type": "string",
+          "format": "date",
+          "description": "Exclusive ISO 8601 UTC end date (YYYY-MM-DD) ending the half-open interval [period_start_date, period_end_date)."
+        },
+        "outage_minutes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total verified unavailable minutes in [period_start_date, period_end_date), rounded to integer minutes (>= 0)."
+        },
+        "credit_cents": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Final net SLA credit in integer cents: max(0, floor(monthly_fee_cents * tier_rate) - admin_offset_cents), rounded down to nearest cent."
+        }
+      },
+      "required": [
+        "rationale",
+        "period_start_date",
+        "period_end_date",
+        "outage_minutes",
+        "credit_cents"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

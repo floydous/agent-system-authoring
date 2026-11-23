@@ -1,9 +1,9 @@
 {
   "skill_name": "agent-system-authoring",
-  "version": "1.2.0",
-  "status": "executed_v3_on_gpt_6_luna",
+  "version": "1.3.0",
+  "status": "executed_v4_on_gpt_6_luna",
   "results_report": "https://github.com/floydous/agent-system-authoring/blob/main/evidence/evals_results.md",
-  "description": "Eval Suite v3: 32 trigger cases (12 positive incl. 6 plain-English, 10 distractor negatives, 10 unmatched 'none' negatives + 50-call solo-skill precision test) and 10 non-leading comparative tasks with 8 objective probes and strictly counterbalanced 50/50 blinded judging.",
+  "description": "Eval Suite v4: 32 trigger cases with reason-first routing (12 positive incl. 6 plain-English, 10 distractor negatives, 10 unmatched 'none' negatives + 50-call solo-skill precision test) and 10 non-leading comparative tasks with 8 objective probes (T1 spec vs general hygiene separated on comp_09) and dual-order (A,B)+(B,A) swap-consistent blinded judging.",
   "evals": [
     {
       "id": "trigger_pos_01_plain_injection_guard",

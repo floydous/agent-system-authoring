@@ -2,25 +2,26 @@
 # requires-python = ">=3.10"
 # dependencies = []
 # ///
-"""Eval Suite v3 Runner for skills/agent-system-authoring/evals/evals.json.
+"""Eval Suite v4 Runner for skills/agent-system-authoring/evals/evals.json.
 
 Executes on an OpenAI-compatible endpoint (configured solely via env vars):
-- Part A1 (Hard 9-Skill Triggering): 32 prompts (12 positive [6 plain-English, 6 tech],
+- Part A1 (Hard 9-Skill Triggering, reason-first schema): 32 prompts (12 positive [6 plain-English, 6 tech],
   10 distractor negatives against 8 generic skills, 10 unmatched 'none' negatives)
   x N iterations = 160 calls.
-- Part A2 (Solo-Skill Precision Stress Test): 10 unmatched 'none' prompts against
+- Part A2 (Solo-Skill Precision Stress Test, reason-first schema): 10 unmatched 'none' prompts against
   only [agent-system-authoring, 'none'] x N iterations = 50 calls.
 - Part B (Non-Leading Comparative Generation): 10 tasks x 2 arms (baseline vs
-  progressive-disclosure with_skill: SKILL.md + task-matched reference + template) x N.
-- Part C (8 Objective Downstream & Structural Probes): comp_01, comp_03..comp_09.
-- Part D (Strictly 50/50 Counterbalanced Blinded Judge): 50 pairs with exact 25/25 A/B
-  assignment, score-derived winners, raw-winner disagreement tracking, and task-level tests.
+  progressive-disclosure with_skill: SKILL.md + task-matched reference + default template) x N.
+- Part C (8 Objective Downstream & Structural Probes): comp_01, comp_03..comp_09
+  (separating T1 agentskills.io + PEP 723 from general packaging hygiene on comp_09).
+- Part D (Dual-Order (A,B) + (B,A) Swap-Consistent Blinded Judge): 100 pairs (2 orders x 50),
+  position-neutralized pair means, swap-consistency tracking, and task-level tests.
 
 Unit-of-analysis hygiene: All hypothesis tests operate strictly on prompt/task-level
 means (never pooled repeated iterations). Each JSONL record stores model, sanitized
 request_payload (zero URLs/auth), reasoning_tokens, and total_tokens for provenance.
 
-Writes traces to evidence/raw_evals/results_evals_v3.jsonl and renders
+Writes traces to evidence/raw_evals/results_evals_v4.jsonl and renders
 evidence/evals_results.md (supporting --rescore-only and --check for CI).
 """
 
@@ -603,20 +604,33 @@ def run_downstream_probe(
 
     if eval_id == "comp_09_skill_package_data_auditing":
         low = (artifact_text or "").lower()
-        has_name = "name: data-pipeline-auditing" in low
+        has_name = bool(re.search(r"name:\s*['\"]?data-pipeline-auditing['\"]?", low))
         has_desc = "description:" in low and ("use when" in low or "when " in low)
         has_pep723 = "# /// script" in low and "requires-python" in low
         has_one_hop = "references/" in low and "../references/" not in low
-        has_hygiene = "__pycache__" in low and ("secret" in low or "credential" in low)
+        has_secret_hygiene = bool(
+            re.search(r"(?:secret|credential|api[ _-]?key|bearer token|auth token|access token|password|\.env)", low)
+        )
+        has_artifact_hygiene = bool(
+            re.search(
+                r"(?:__pycache__|\.pyc|pytest|\.pytest_cache|build/|cache|\btmp\b|\btemp\b|\btests/?\b|generated report|artifact|mock|dataset)",
+                low,
+            )
+        )
         no_evidence_inside = "data-pipeline-auditing/evidence" not in low and "├── evidence" not in low
-        ok = 1.0 if (has_name and has_desc and has_pep723 and has_one_hop and has_hygiene and no_evidence_inside) else 0.0
+        spec_ok = 1.0 if (has_name and has_desc and has_pep723 and has_one_hop) else 0.0
+        hygiene_ok = 1.0 if (has_secret_hygiene and has_artifact_hygiene and no_evidence_inside) else 0.0
+        ok = 1.0 if (spec_ok == 1.0 and hygiene_ok == 1.0) else 0.0
         return {
             "score": ok,
+            "spec_score": spec_ok,
+            "hygiene_score": hygiene_ok,
             "has_name": has_name,
             "has_desc": has_desc,
             "has_pep723": has_pep723,
             "has_one_hop": has_one_hop,
-            "has_hygiene": has_hygiene,
+            "has_secret_hygiene": has_secret_hygiene,
+            "has_artifact_hygiene": has_artifact_hygiene,
             "no_evidence_inside": no_evidence_inside,
             "error": None,
         }, None, 0, 0
@@ -625,11 +639,11 @@ def run_downstream_probe(
 
 
 def run_blinded_judge(
-    gw: str, key: str, model: str, eval_item: Dict[str, Any], task_idx: int, it: int, base_txt: str, skill_txt: str
+    gw: str, key: str, model: str, eval_item: Dict[str, Any], it: int, order: str, base_txt: str, skill_txt: str
 ) -> Tuple[Dict[str, Any], Dict[str, Any], int, int]:
-    """Strictly 50/50 counterbalanced blinded judge with score-derived winner & disagreement logging."""
+    """Dual-order (fwd=(base,skill), rev=(skill,base)) blinded judge with score-derived winner."""
     eid = eval_item["id"]
-    if (task_idx + it) % 2 == 0:
+    if order == "fwd":
         cand_a, cand_b = base_txt, skill_txt
         a_is = "baseline"
     else:
@@ -645,14 +659,14 @@ def run_blinded_judge(
                 "type": "object",
                 "properties": {
                     "justification": {"type": "string"},
-                    "a_structural_clarity": {"type": "integer"},
-                    "a_safety_and_boundaries": {"type": "integer"},
-                    "a_spec_precision": {"type": "integer"},
-                    "a_conciseness_and_signal": {"type": "integer"},
-                    "b_structural_clarity": {"type": "integer"},
-                    "b_safety_and_boundaries": {"type": "integer"},
-                    "b_spec_precision": {"type": "integer"},
-                    "b_conciseness_and_signal": {"type": "integer"},
+                    "a_structural_clarity": {"type": "integer", "minimum": 1, "maximum": 5},
+                    "a_safety_and_boundaries": {"type": "integer", "minimum": 1, "maximum": 5},
+                    "a_spec_precision": {"type": "integer", "minimum": 1, "maximum": 5},
+                    "a_conciseness_and_signal": {"type": "integer", "minimum": 1, "maximum": 5},
+                    "b_structural_clarity": {"type": "integer", "minimum": 1, "maximum": 5},
+                    "b_safety_and_boundaries": {"type": "integer", "minimum": 1, "maximum": 5},
+                    "b_spec_precision": {"type": "integer", "minimum": 1, "maximum": 5},
+                    "b_conciseness_and_signal": {"type": "integer", "minimum": 1, "maximum": 5},
                     "winner": {"type": "string", "enum": ["A", "B", "tie"]},
                 },
                 "required": [
@@ -721,6 +735,7 @@ def run_blinded_judge(
     return {
         "eval_id": eid,
         "iteration": it,
+        "order": order,
         "a_was": a_is,
         "judge_raw_winner": raw_win,
         "score_raw_winner": score_raw_win,
@@ -754,7 +769,6 @@ def render_report(root: Path, out_jsonl: Path, iterations: int, model_label: str
     fp_d = sum(1 for r in neg_d if r["metrics"]["activated"])
     fp_n = sum(1 for r in neg_n if r["metrics"]["activated"])
     fp_tot = fp_d + fp_n
-    tn_tot = (len(neg_d) - fp_d) + (len(neg_n) - fp_n)
     prec = tp / (tp + fp_tot) if (tp + fp_tot) else 0.0
     rec = tp / (tp + fn) if (tp + fn) else 0.0
     f1 = (2 * prec * rec / (prec + rec)) if (prec + rec) else 0.0
@@ -768,34 +782,39 @@ def render_report(root: Path, out_jsonl: Path, iterations: int, model_label: str
         by_reg[r["eval_id"]].append(r)
 
     md: List[str] = [
-        "# Evaluation Suite v3 Results (`evals/evals.json`)",
+        "# Evaluation Suite v4 Results (`evals/evals.json`)",
         "",
         f"- **Target Model**: `{model_label}` (run `{run_id}`, `{errors}` errors across `{len(records)}` trace records)",
         f"- **Iterations**: `N = {iterations}` runs per prompt",
         "- **Unit-of-Analysis Hygiene**: All hypothesis tests operate strictly on prompt/task-level means (`df = num_tasks - 1`).",
-        "- **Context Disclosure**: Part B `with_skill` runs simulate progressive disclosure by supplying `SKILL.md` plus the single task-matched reference guide and starter template.",
-        f"- **Raw Traces**: `evidence/raw_evals/results_evals_v3.jsonl` (`{len(records)}` records including `model`, sanitized `request_payload`, `reasoning_tokens`, and `total_tokens`)",
+        "- **Context Disclosure**: Part B `with_skill` runs simulate progressive disclosure by supplying `SKILL.md` plus the single task-matched reference guide and default starter template.",
+        f"- **Raw Traces**: `evidence/raw_evals/results_evals_v4.jsonl` (`{len(records)}` records including `model`, sanitized `request_payload`, `reasoning_tokens`, and `total_tokens`)",
         "",
-        "## 1. Hard Triggering Accuracy (9-Skill Registry & Solo-Skill Stress Test)",
+        "## 1. Hard Triggering Accuracy (9-Skill Registry & Solo-Skill Stress Test, Reason-First Routing)",
         "",
-        f"### 1.1 9-Skill Registry (`32` Prompts × `5` = `{len(trig_reg)}` Calls, Generic Distractors)",
+        f"### 1.1 9-Skill Registry (`32` Prompts × `{iterations}` = `{len(trig_reg)}` Calls, Generic Distractors)",
         f"- **Positive Triggers (6 plain-English + 6 technical)**: `TP = {tp}/{len(pos_r)}`, `FN = {fn}/{len(pos_r)}`",
         f"- **Distractor Negatives (`10` prompts)**: `{len(neg_d)-fp_d}/{len(neg_d)}` rejected (`FP = {fp_d}`)",
         f"- **Unmatched `'none'` Negatives (`10` overlapping prompts)**: `{len(neg_n)-fp_n}/{len(neg_n)}` rejected (`FP = {fp_n}`, selected `'none'` cleanly: {sum(1 for r in neg_n if r['metrics']['selected_skill'] == 'none')}/{len(neg_n)})",
         f"- **Overall Precision**: `{prec:.4f}` | **Recall**: `{rec:.4f}` | **F1**: `{f1:.4f}`",
         "",
-        f"### 1.2 Solo-Skill Precision Stress Test (`10` `'none'` Prompts × `5` = `{len(trig_solo)}` Calls, No Distractors)",
+        f"### 1.2 Solo-Skill Precision Stress Test (`10` `'none'` Prompts × `{iterations}` = `{len(trig_solo)}` Calls, No Distractors)",
         f"- **Result**: `{solo_tn}/{len(trig_solo)}` (`{100*solo_tn/len(trig_solo) if trig_solo else 0:.1f}%`) correctly stayed at `'none'` (`FP = {solo_fp}`).",
         "",
-        "| Eval ID | Type | Registry Pass (`N=5`) | `TARa@5` | Registry Selections |",
-        "| :--- | :--- | :---: | :---: | :--- |",
+        f"| Eval ID | Type | Target Match / Rejected (`N={iterations}`) | Exact `'none'` | `TARa@{iterations}` | Registry Selections |",
+        "| :--- | :--- | :---: | :---: | :---: | :--- |",
     ]
     for eid in sorted(by_reg.keys()):
         rs = by_reg[eid]
         ok = sum(1 for r in rs if r["metrics"]["score"] == 1.0)
         uniq = sorted({str(r["metrics"]["selected_skill"]) for r in rs})
         tara = "1/1 (100%)" if len(uniq) == 1 else "0/1 (0%)"
-        md.append(f"| `{eid}` | `{rs[0]['kind']}` | {ok}/{len(rs)} ({100*ok/len(rs):.0f}%) | {tara} | `{', '.join(uniq)}` |")
+        if rs[0]["kind"] == "trigger_negative_none":
+            none_ok = sum(1 for r in rs if r["metrics"]["selected_skill"] == "none")
+            none_col = f"{none_ok}/{len(rs)} ({100*none_ok/len(rs):.0f}%)"
+        else:
+            none_col = "—"
+        md.append(f"| `{eid}` | `{rs[0]['kind']}` | {ok}/{len(rs)} ({100*ok/len(rs):.0f}%) | {none_col} | {tara} | `{', '.join(uniq)}` |")
 
     # Downstream Probes
     by_probe = defaultdict(lambda: defaultdict(list))
@@ -805,7 +824,7 @@ def render_report(root: Path, out_jsonl: Path, iterations: int, model_label: str
 
     md.extend([
         "",
-        "## 2. Objective Downstream Functional & Structural Execution (`8` Tasks × `2` Arms × `5` Runs)",
+        f"## 2. Objective Downstream Functional & Structural Execution (`8` Tasks × `2` Arms × `{iterations}` Runs)",
         "",
         "| Task ID | Probe Description | `baseline` Pass Rate | `with_skill` Pass Rate | Task Delta |",
         "| :--- | :--- | :---: | :---: | :---: |",
@@ -820,7 +839,7 @@ def render_report(root: Path, out_jsonl: Path, iterations: int, model_label: str
         "comp_06_logistics_custom_format_tool": "OpenAI strict wire + exact no-space `lat,lon` call",
         "comp_07_non_reasoning_refund_tool": "Zero-reasoning arithmetic (`4650c`, `17d`, valid dates)",
         "comp_08_fix_gamed_search_tools": "OpenAI wire shape + rebalanced PDF vs wiki routing",
-        "comp_09_skill_package_data_auditing": "Deterministic `agentskills.io` spec & hygiene audit",
+        "comp_09_skill_package_data_auditing": "T1 `agentskills.io` + PEP 723 + general hygiene",
     }
     for eid in sorted(by_probe.keys()):
         bm = statistics.mean(by_probe[eid]["baseline"])
@@ -833,76 +852,110 @@ def render_report(root: Path, out_jsonl: Path, iterations: int, model_label: str
             f"| `{eid}` | {probe_names.get(eid, '')} | {bok}/{len(by_probe[eid]['baseline'])} ({100*bm:.0f}%) | "
             f"{wok}/{len(by_probe[eid]['with_skill'])} ({100*wm:.0f}%) | **{wm-bm:+.2f}** |"
         )
+    c9_base = [r["metrics"] for r in probes if r["eval_id"] == "comp_09_skill_package_data_auditing" and r["condition"] == "baseline"]
+    c9_skill = [r["metrics"] for r in probes if r["eval_id"] == "comp_09_skill_package_data_auditing" and r["condition"] == "with_skill"]
+    c9_spec_b = sum(1 for m in c9_base if m.get("spec_score") == 1.0)
+    c9_spec_s = sum(1 for m in c9_skill if m.get("spec_score") == 1.0)
+    c9_hyg_b = sum(1 for m in c9_base if m.get("hygiene_score") == 1.0)
+    c9_hyg_s = sum(1 for m in c9_skill if m.get("hygiene_score") == 1.0)
     p_diffs = [w - b for w, b in zip(p_skill_means, p_base_means)]
     md.extend([
         "",
-        f"**Task-Level Downstream Functional Summary (`n = {len(p_diffs)}` tasks, `df = {len(p_diffs)-1}`)**: "
+        f"- **`comp_09` Decomposition (`T1` Spec vs Packaging Hygiene)**: `T1 agentskills.io + PEP 723` (`baseline` `{c9_spec_b}/{len(c9_base)}` vs `with_skill` `{c9_spec_s}/{len(c9_skill)}`); `general packaging hygiene` (`baseline` `{c9_hyg_b}/{len(c9_base)}` vs `with_skill` `{c9_hyg_s}/{len(c9_skill)}`).",
+        f"- **Task-Level Downstream Functional Summary (`n = {len(p_diffs)}` tasks, `df = {len(p_diffs)-1}`)**: "
         f"`baseline` = `{statistics.mean(p_base_means):.3f}` vs `with_skill` = `{statistics.mean(p_skill_means):.3f}` "
         f"({paired_t_summary(p_diffs)}).",
     ])
 
-    # Blinded Judge
-    by_judge = defaultdict(list)
+    # Dual-Order (A,B) + (B,A) Swap-Consistent Blinded Judge
+    paired_orders: Dict[Tuple[str, int], Dict[str, Dict[str, Any]]] = defaultdict(dict)
     for r in judges:
-        by_judge[r["eval_id"]].append(r["metrics"])
+        m = r["metrics"]
+        ord_key = m.get("order") or ("fwd" if m.get("a_was") == "baseline" else "rev")
+        paired_orders[(r["eval_id"], int(r["iteration"]))][ord_key] = m
 
-    a_base_cnt = sum(1 for r in judges if r["metrics"].get("a_was") == "baseline")
-    a_skill_cnt = sum(1 for r in judges if r["metrics"].get("a_was") == "with_skill")
     pos_a_wins = sum(1 for r in judges if r["metrics"].get("score_raw_winner") == "A")
     pos_b_wins = sum(1 for r in judges if r["metrics"].get("score_raw_winner") == "B")
+    pos_ties = sum(1 for r in judges if r["metrics"].get("score_raw_winner") == "tie")
     disagree_cnt = sum(1 for r in judges if r["metrics"].get("score_vs_raw_disagreed"))
 
+    by_task_pairs = defaultdict(list)
+    position_flips = 0
+    for (eid, _it), orders_dict in sorted(paired_orders.items()):
+        fwd = orders_dict.get("fwd")
+        rev = orders_dict.get("rev")
+        if fwd and rev:
+            pair_base = 0.5 * (float(fwd["baseline_score"]) + float(rev["baseline_score"]))
+            pair_skill = 0.5 * (float(fwd["with_skill_score"]) + float(rev["with_skill_score"]))
+            w_fwd = fwd["mapped_winner"]
+            w_rev = rev["mapped_winner"]
+            if w_fwd == w_rev == "with_skill":
+                swap_outcome = "consistent_skill"
+            elif w_fwd == w_rev == "baseline":
+                swap_outcome = "consistent_base"
+            else:
+                swap_outcome = "flip_or_tie"
+                if {w_fwd, w_rev} == {"with_skill", "baseline"}:
+                    position_flips += 1
+        else:
+            only = fwd or rev or {}
+            pair_base = float(only.get("baseline_score", 0.0))
+            pair_skill = float(only.get("with_skill_score", 0.0))
+            mw = only.get("mapped_winner", "tie")
+            swap_outcome = "consistent_skill" if mw == "with_skill" else ("consistent_base" if mw == "baseline" else "flip_or_tie")
+        by_task_pairs[eid].append({"base": pair_base, "skill": pair_skill, "outcome": swap_outcome})
+
+    n_pairs = sum(len(v) for v in by_task_pairs.values())
     md.extend([
         "",
-        "## 3. Counterbalanced 50/50 Blinded Pairwise Judge (`10` Tasks × `5` Pairs = `50` Judgments)",
+        f"## 3. Dual-Order `(A,B) + (B,A)` Swap-Consistent Blinded Judge (`{len(by_task_pairs)}` Tasks × `{iterations}` Pairs × `2` Orders = `{len(judges)}` Judgments)",
         "",
-        f"- **Position Balance**: `with_skill` in Position A `{a_skill_cnt}/50`, `baseline` in Position A `{a_base_cnt}/50` (`25/25` exact counterbalance).",
-        f"- **Position & Internal Consistency Audit**: Score-derived Position A wins `{pos_a_wins}/50` vs Position B `{pos_b_wins}/50`; raw-winner vs score-winner disagreements `{disagree_cnt}/50` (resolved strictly to dimension-score winner). *Caveat: same-family judge (`{model_label}`).*",
+        f"- **Position & Swap-Consistency Audit**: Raw Position A wins `{pos_a_wins}/{len(judges)}`, Position B `{pos_b_wins}/{len(judges)}`, Ties `{pos_ties}/{len(judges)}`; exact A↔B position flips `{position_flips}/{n_pairs}`; raw-winner vs score-winner disagreements `{disagree_cnt}/{len(judges)}` (resolved strictly to dimension-score winner). *Caveat: same-family judge (`{model_label}`).*",
         "",
-        "| Task ID | `baseline` Mean Score | `with_skill` Mean Score | Delta | Score-Derived Wins (`skill` / `base` / `tie`) |",
+        "| Task ID | `baseline` Mean Score | `with_skill` Mean Score | Delta | Swap-Consistent (`skill` / `base` / `flip_or_tie`) |",
         "| :--- | :---: | :---: | :---: | :---: |",
     ])
     j_base_means: List[float] = []
     j_skill_means: List[float] = []
-    tot_w, tot_b, tot_t = 0, 0, 0
-    for eid in sorted(by_judge.keys()):
-        items = by_judge[eid]
-        bm = statistics.mean(float(m["baseline_score"]) for m in items)
-        wm = statistics.mean(float(m["with_skill_score"]) for m in items)
-        w_cnt = sum(1 for m in items if m["mapped_winner"] == "with_skill")
-        b_cnt = sum(1 for m in items if m["mapped_winner"] == "baseline")
-        t_cnt = sum(1 for m in items if m["mapped_winner"] == "tie")
+    tot_w, tot_b, tot_ft = 0, 0, 0
+    for eid in sorted(by_task_pairs.keys()):
+        items = by_task_pairs[eid]
+        bm = statistics.mean(p["base"] for p in items)
+        wm = statistics.mean(p["skill"] for p in items)
+        w_cnt = sum(1 for p in items if p["outcome"] == "consistent_skill")
+        b_cnt = sum(1 for p in items if p["outcome"] == "consistent_base")
+        ft_cnt = sum(1 for p in items if p["outcome"] == "flip_or_tie")
         tot_w += w_cnt
         tot_b += b_cnt
-        tot_t += t_cnt
+        tot_ft += ft_cnt
         j_base_means.append(bm)
         j_skill_means.append(wm)
-        md.append(f"| `{eid}` | {bm:.3f} | {wm:.3f} | **{wm-bm:+.3f}** | {w_cnt} / {b_cnt} / {t_cnt} |")
+        md.append(f"| `{eid}` | {bm:.3f} | {wm:.3f} | **{wm-bm:+.3f}** | {w_cnt} / {b_cnt} / {ft_cnt} |")
 
     j_diffs = [w - b for w, b in zip(j_skill_means, j_base_means)]
     md.extend([
         "",
-        f"**Task-Level Blinded Judge Summary (`n = {len(j_diffs)}` tasks, `df = {len(j_diffs)-1}`)**: "
+        f"**Task-Level Swap-Consistent Judge Summary (`n = {len(j_diffs)}` tasks, `df = {len(j_diffs)-1}`)**: "
         f"`baseline` = `{statistics.mean(j_base_means):.3f}` vs `with_skill` = `{statistics.mean(j_skill_means):.3f}` "
-        f"({paired_t_summary(j_diffs)}; score-derived judgments `{tot_w}` with_skill / `{tot_b}` baseline / `{tot_t}` tie).",
+        f"({paired_t_summary(j_diffs)}; swap-consistent pairs `{tot_w}` with_skill / `{tot_b}` baseline / `{tot_ft}` flip_or_tie).",
         "",
     ])
     return "\n".join(md).replace("\r\n", "\n")
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Execute Eval Suite v3 against gateway model.")
+    parser = argparse.ArgumentParser(description="Execute Eval Suite v4 against gateway model.")
     parser.add_argument("--iterations", type=int, default=DEFAULT_ITERATIONS)
     parser.add_argument("--concurrency", type=int, default=DEFAULT_CONCURRENCY)
     parser.add_argument("--model", default=DEFAULT_MODEL)
-    parser.add_argument("--rescore-only", action="store_true", help="Render/verify evals_results.md from existing results_evals_v3.jsonl.")
+    parser.add_argument("--rescore-only", action="store_true", help="Render/verify evals_results.md from existing results_evals_v4.jsonl.")
     parser.add_argument("--check", action="store_true", help="With --rescore-only, verify evals_results.md matches trace output byte-for-byte.")
     args = parser.parse_args()
 
     root = Path(__file__).resolve().parent.parent
     skill_root = root / "skills" / "agent-system-authoring"
     out_dir = root / "evidence" / "raw_evals"
-    out_jsonl = out_dir / "results_evals_v3.jsonl"
+    out_jsonl = out_dir / "results_evals_v4.jsonl"
     report_path = root / "evidence" / "evals_results.md"
 
     if args.rescore_only:
@@ -916,12 +969,12 @@ def main() -> int:
                 return 1
             existing = report_path.read_text(encoding="utf-8").replace("\r\n", "\n")
             if existing != rendered:
-                print(f"ERROR: {report_path} has drifted from Eval Suite v3 trace report.", file=sys.stderr)
+                print(f"ERROR: {report_path} has drifted from Eval Suite v4 trace report.", file=sys.stderr)
                 return 1
-            print(f"OK: {report_path} matches Eval Suite v3 traces exactly.")
+            print(f"OK: {report_path} matches Eval Suite v4 traces exactly.")
             return 0
         report_path.write_text(rendered, encoding="utf-8")
-        print(f"Wrote Eval Suite v3 report to {report_path}")
+        print(f"Wrote Eval Suite v4 report to {report_path}")
         return 0
 
     gw = os.environ.get("GATEWAY_URL", "").strip()
@@ -947,10 +1000,10 @@ def main() -> int:
             "schema": {
                 "type": "object",
                 "properties": {
-                    "selected_skill": {"type": "string", "enum": reg_choices},
                     "reason": {"type": "string"},
+                    "selected_skill": {"type": "string", "enum": reg_choices},
                 },
-                "required": ["selected_skill", "reason"],
+                "required": ["reason", "selected_skill"],
                 "additionalProperties": False,
             },
         },
@@ -969,10 +1022,10 @@ def main() -> int:
             "schema": {
                 "type": "object",
                 "properties": {
-                    "selected_skill": {"type": "string", "enum": [skill_name, "none"]},
                     "reason": {"type": "string"},
+                    "selected_skill": {"type": "string", "enum": [skill_name, "none"]},
                 },
-                "required": ["selected_skill", "reason"],
+                "required": ["reason", "selected_skill"],
                 "additionalProperties": False,
             },
         },
@@ -983,7 +1036,7 @@ def main() -> int:
     )
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    run_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_evals_v3")
+    run_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_evals_v4")
     lock = threading.Lock()
     all_records: List[Dict[str, Any]] = []
 
@@ -1126,20 +1179,20 @@ def main() -> int:
                 append_rec(fut.result(), fh)
         print(f"Part C Objective Probes finished: {len(c_jobs)} items")
 
-        # Part D: Strictly 50/50 Counterbalanced Blinded Judge (10 x 5 = 50 pairs)
-        d_jobs = [(idx, it, ev) for it in range(1, args.iterations + 1) for idx, ev in enumerate(comp_items)]
+        # Part D: Dual-Order (A,B) + (B,A) Swap-Consistent Blinded Judge (10 x 5 x 2 = 100 pairs)
+        d_jobs = [(it, ev, order) for it in range(1, args.iterations + 1) for ev in comp_items for order in ("fwd", "rev")]
 
-        def judge_worker(job: Tuple[int, int, Dict[str, Any]]) -> Dict[str, Any]:
-            idx, it, ev = job
+        def judge_worker(job: Tuple[int, Dict[str, Any], str]) -> Dict[str, Any]:
+            it, ev, order = job
             b_txt = generated[(ev["id"], it, "baseline")]
             w_txt = generated[(ev["id"], it, "with_skill")]
-            jres, j_req, r_tok, tot_tok = run_blinded_judge(gw, key, args.model, ev, idx, it, b_txt, w_txt)
+            jres, j_req, r_tok, tot_tok = run_blinded_judge(gw, key, args.model, ev, it, order, b_txt, w_txt)
             return {
                 "run_id": run_id,
                 "timestamp_utc": datetime.now(timezone.utc).isoformat(),
                 "eval_id": ev["id"],
                 "kind": "blinded_judge",
-                "condition": "pairwise_blinded",
+                "condition": f"pairwise_blinded_{order}",
                 "iteration": it,
                 "model": args.model,
                 "reasoning_effort": "medium",
@@ -1154,13 +1207,13 @@ def main() -> int:
         with ThreadPoolExecutor(max_workers=args.concurrency) as pool:
             for fut in as_completed([pool.submit(judge_worker, j) for j in d_jobs]):
                 append_rec(fut.result(), fh)
-        print(f"Part D Counterbalanced Blinded Judge finished: {len(d_jobs)} pairs")
+        print(f"Part D Dual-Order Blinded Judge finished: {len(d_jobs)} calls")
 
     rendered = render_report(root, out_jsonl, args.iterations, "GPT 6 Luna")
     report_path.write_text(rendered, encoding="utf-8")
-    print(f"Wrote Eval Suite v3 report to {report_path}")
+    print(f"Wrote Eval Suite v4 report to {report_path}")
     errors = sum(1 for r in all_records if r.get("error") is not None)
-    print(f"Eval Suite v3 complete: {len(all_records)} records, {errors} errors.")
+    print(f"Eval Suite v4 complete: {len(all_records)} records, {errors} errors.")
     return 0 if errors == 0 else 1
 
 

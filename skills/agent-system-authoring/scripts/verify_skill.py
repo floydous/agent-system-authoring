@@ -91,6 +91,24 @@ class SkillVerifier:
         if len(self.errors) == err_before:
             self.passed_checks.append(check_name)
 
+    def _parse_yaml_scalar(self, raw_val: str) -> Any:
+        """Parse a single YAML scalar preserving native int/float/bool/null unless quoted."""
+        s = raw_val.strip()
+        if len(s) >= 2 and ((s[0] == '"' and s[-1] == '"') or (s[0] == "'" and s[-1] == "'")):
+            return s[1:-1]
+        low = s.lower()
+        if low == "true":
+            return True
+        if low == "false":
+            return False
+        if low in ("null", "~"):
+            return None
+        if re.fullmatch(r"[+-]?\d+", s):
+            return int(s)
+        if re.fullmatch(r"[+-]?(?:\d+\.\d*|\.\d+)(?:[eE][+-]?\d+)?", s):
+            return float(s)
+        return s
+
     def extract_frontmatter(self, content: str) -> Tuple[Dict[str, Any], str, int]:
         """Parse YAML frontmatter block cleanly using Python stdlib only."""
         lines = content.splitlines(keepends=True)
@@ -126,19 +144,20 @@ class SkillVerifier:
                     is_folded = False
                 k, v = stripped.split(":", 1)
                 current_key = k.strip()
-                val = v.strip().strip("'\"")
-                if val in (">", "|", ">-", "|-"):
+                raw_val = v.strip()
+                if raw_val in (">", "|", ">-", "|-"):
                     is_folded = True
-                elif not val:
+                elif not raw_val:
                     parsed_dict[current_key] = {}
                 else:
-                    parsed_dict[current_key] = val
+                    parsed_dict[current_key] = self._parse_yaml_scalar(raw_val)
             elif indent > 0 and current_key:
                 if is_folded:
                     multiline_accum.append(stripped)
                 elif isinstance(parsed_dict.get(current_key), dict) and ":" in stripped:
                     sub_k, sub_v = stripped.split(":", 1)
-                    parsed_dict[current_key][sub_k.strip()] = sub_v.strip().strip("'\"")
+                    sub_raw = sub_v.strip()
+                    parsed_dict[current_key][sub_k.strip()] = "" if not sub_raw else self._parse_yaml_scalar(sub_raw)
 
         if current_key and is_folded:
             parsed_dict[current_key] = " ".join(multiline_accum)
@@ -152,11 +171,12 @@ class SkillVerifier:
             self.log_failure("Directory Layout", f"Skill root directory does not exist: {self.root}")
             return
 
-        allowed_root_md = {"SKILL.md"}
-        root_md = {p.name for p in self.root.glob("*.md")}
-        disallowed = root_md - allowed_root_md
-        if disallowed:
-            self.log_failure("Directory Layout", f"Disallowed root markdown files found: {disallowed}")
+        if not self.generic:
+            allowed_root_md = {"SKILL.md"}
+            root_md = {p.name for p in self.root.glob("*.md")}
+            disallowed = root_md - allowed_root_md
+            if disallowed:
+                self.log_failure("Directory Layout", f"Disallowed root markdown files found: {disallowed}")
 
         if not self.generic:
             required_dirs = [
@@ -300,13 +320,15 @@ class SkillVerifier:
         if len(lines) >= 500:
             self.log_failure("Progressive Disclosure", f"SKILL.md line count {len(lines)} exceeds 500 line limit", skill_md)
 
-        if len(lines) < 25:
-            self.log_failure("Progressive Disclosure", f"SKILL.md total lines {len(lines)} below minimum threshold of 25", skill_md)
-
         _, body, _ = self.extract_frontmatter(content)
         non_blank_lines = [line for line in body.splitlines() if line.strip()]
-        if len(non_blank_lines) < 20:
-            self.log_failure("Progressive Disclosure", f"Body substantive content {len(non_blank_lines)} lines below threshold 20", skill_md)
+        if not self.generic:
+            if len(lines) < 25:
+                self.log_failure("Progressive Disclosure", f"SKILL.md total lines {len(lines)} below minimum threshold of 25", skill_md)
+            if len(non_blank_lines) < 20:
+                self.log_failure("Progressive Disclosure", f"Body substantive content {len(non_blank_lines)} lines below threshold 20", skill_md)
+        elif len(non_blank_lines) < 1:
+            self.log_failure("Progressive Disclosure", "SKILL.md body must contain at least 1 non-blank line", skill_md)
 
         est_tokens = len(body) / 4.0
         if est_tokens >= 5000:
@@ -443,6 +465,67 @@ class SkillVerifier:
 
         self.log_if_clean(err_before, "Evidence Ledger Tier Vocabulary")
 
+    def _has_structural_constraint(self, schema_obj: Any) -> bool:
+        """Return True when a property schema (or anyOf branch) declares a structural JSON Schema constraint."""
+        if not isinstance(schema_obj, dict):
+            return False
+        constraint_keys = {"minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "pattern", "format", "enum"}
+        if any(k in schema_obj for k in constraint_keys):
+            return True
+        for branch in schema_obj.get("anyOf") or []:
+            if self._has_structural_constraint(branch):
+                return True
+        return False
+
+    def _validate_openai_strict_tool(self, tool_tmpl: Path, expect_rationale_first: bool) -> None:
+        """Validate OpenAI Chat Completions strict tool template invariants."""
+        if not tool_tmpl.exists():
+            self.log_failure("Templates", f"{tool_tmpl.name} missing", tool_tmpl)
+            return
+        raw_tool_txt = tool_tmpl.read_text(encoding="utf-8")
+        if LEAKED_INTERNAL_RULE_RE.search(raw_tool_txt) or "references/" in raw_tool_txt:
+            self.log_failure("Templates", f"{tool_tmpl.name} leaks internal rule IDs or references/ paths into runtime tool descriptions", tool_tmpl)
+        try:
+            wrapper = json.loads(raw_tool_txt)
+        except json.JSONDecodeError as e:
+            self.log_failure("Templates", f"{tool_tmpl.name} is not valid JSON: {e}", tool_tmpl)
+            return
+
+        if wrapper.get("type") != "function" or not isinstance(wrapper.get("function"), dict):
+            self.log_failure("Templates", f"{tool_tmpl.name} must use valid OpenAI wire shape {{'type': 'function', 'function': {{...}}}}", tool_tmpl)
+            return
+        fn = wrapper["function"]
+        if not isinstance(fn.get("name"), str) or not SNAKE_CASE_PATTERN.match(fn["name"]):
+            self.log_failure("Templates", f"function.name in {tool_tmpl.name} must be snake_case", tool_tmpl)
+        if fn.get("strict") is not True:
+            self.log_failure("Templates", f"function.strict must be true in OpenAI strict {tool_tmpl.name}", tool_tmpl)
+        params = fn.get("parameters")
+        if not isinstance(params, dict) or params.get("type") != "object":
+            self.log_failure("Templates", f"function.parameters in {tool_tmpl.name} must be an object schema", tool_tmpl)
+            return
+        if params.get("additionalProperties", True) is not False:
+            self.log_failure("Templates", f"function.parameters in {tool_tmpl.name} must specify additionalProperties: false", tool_tmpl)
+        prop_map = params.get("properties") or {}
+        props = list(prop_map.keys())
+        reqs = set(params.get("required") or [])
+        if not props or set(props) != reqs:
+            self.log_failure("Templates", f"OpenAI strict tool schema {tool_tmpl.name} requires all properties in 'required'. Props: {set(props)}, Req: {reqs}", tool_tmpl)
+        if len(props) < 2:
+            self.log_failure("Templates", f"Tool schema {tool_tmpl.name} has {len(props)} properties; expected >= 2", tool_tmpl)
+        else:
+            if expect_rationale_first:
+                if props[0].lower() != "rationale":
+                    self.log_failure("Templates", f"Zero-reasoning template {tool_tmpl.name} must place 'rationale' first (got '{props[0]}').", tool_tmpl)
+            else:
+                bad_keys = [p for p in props if p.lower() in {"rationale", "thought", "reason"}]
+                if bad_keys:
+                    self.log_failure("Templates", f"Default template {tool_tmpl.name} must omit {bad_keys} for standard reasoning models.", tool_tmpl)
+                if not any(self._has_structural_constraint(pschema) for pschema in prop_map.values()):
+                    self.log_failure("Templates", f"Default template {tool_tmpl.name} should demonstrate structural JSON Schema constraints.", tool_tmpl)
+        for prop_name in props:
+            if not SNAKE_CASE_PATTERN.match(prop_name):
+                self.log_failure("Templates", f"Property '{prop_name}' in {tool_tmpl.name} is not snake_case", tool_tmpl)
+
     def verify_templates(self) -> None:
         """Verify starter templates have clean runtime formatting and zero leaked internal notes."""
         if self.generic:
@@ -453,6 +536,7 @@ class SkillVerifier:
         legacy_xml = templates_dir / "system_prompt_template.xml"
         skill_tmpl = templates_dir / "skill_template.md"
         tool_tmpl = templates_dir / "tool_schema_template.json"
+        tool_zero_tmpl = templates_dir / "tool_schema_zero_reasoning_template.json"
 
         if legacy_xml.exists():
             self.log_failure("Templates", "Obsolete XML template assets/templates/system_prompt_template.xml should be removed", legacy_xml)
@@ -476,43 +560,8 @@ class SkillVerifier:
             if LEAKED_INTERNAL_RULE_RE.search(sk_text):
                 self.log_failure("Templates", "skill_template.md leaks internal agent-system-authoring rule IDs (R-SYS/TOOL/SKILL)", skill_tmpl)
 
-        if not tool_tmpl.exists():
-            self.log_failure("Templates", "assets/templates/tool_schema_template.json missing", tool_tmpl)
-        else:
-            raw_tool_txt = tool_tmpl.read_text(encoding="utf-8")
-            if LEAKED_INTERNAL_RULE_RE.search(raw_tool_txt) or "references/" in raw_tool_txt:
-                self.log_failure("Templates", "tool_schema_template.json leaks internal rule IDs or references/ paths into runtime tool descriptions", tool_tmpl)
-            try:
-                wrapper = json.loads(raw_tool_txt)
-                if wrapper.get("type") != "function" or not isinstance(wrapper.get("function"), dict):
-                    self.log_failure("Templates", "tool_schema_template.json must use valid OpenAI wire shape {'type': 'function', 'function': {...}}", tool_tmpl)
-                else:
-                    fn = wrapper["function"]
-                    if not isinstance(fn.get("name"), str) or not SNAKE_CASE_PATTERN.match(fn["name"]):
-                        self.log_failure("Templates", "function.name in tool_schema_template.json must be snake_case", tool_tmpl)
-                    if fn.get("strict") is not True:
-                        self.log_failure("Templates", "function.strict must be true in OpenAI strict tool_schema_template.json", tool_tmpl)
-                    params = fn.get("parameters")
-                    if not isinstance(params, dict) or params.get("type") != "object":
-                        self.log_failure("Templates", "function.parameters must be an object schema", tool_tmpl)
-                    else:
-                        if params.get("additionalProperties", True) is not False:
-                            self.log_failure("Templates", "function.parameters must specify additionalProperties: false", tool_tmpl)
-                        props = list((params.get("properties") or {}).keys())
-                        reqs = set(params.get("required") or [])
-                        if not props or set(props) != reqs:
-                            self.log_failure("Templates", f"OpenAI strict tool schema requires all properties in 'required'. Props: {set(props)}, Req: {reqs}", tool_tmpl)
-                        if len(props) < 2:
-                            self.log_failure("Templates", f"Tool schema has {len(props)} properties; expected >= 2", tool_tmpl)
-                        else:
-                            first_prop = props[0].lower()
-                            if "thought" not in first_prop and "rationale" not in first_prop and "reason" not in first_prop:
-                                self.log_warning("Templates", f"First property is '{first_prop}'; rationale-first is recommended for non-reasoning constrained decoding.", tool_tmpl)
-                        for prop_name in props:
-                            if not SNAKE_CASE_PATTERN.match(prop_name):
-                                self.log_failure("Templates", f"Property '{prop_name}' in tool template is not snake_case", tool_tmpl)
-            except json.JSONDecodeError as e:
-                self.log_failure("Templates", f"tool_schema_template.json is not valid JSON: {e}", tool_tmpl)
+        self._validate_openai_strict_tool(tool_tmpl, expect_rationale_first=False)
+        self._validate_openai_strict_tool(tool_zero_tmpl, expect_rationale_first=True)
 
         self.log_if_clean(err_before, "Assets Templates Validation")
 
@@ -528,6 +577,9 @@ class SkillVerifier:
         err_before = len(self.errors)
         try:
             data = json.loads(evals_file.read_text(encoding="utf-8"))
+            if self.generic:
+                self.log_if_clean(err_before, "Evals JSON Syntax (--generic)")
+                return
             if data.get("skill_name") != self.root.name:
                 self.log_failure("Evals Schema", f"skill_name is '{data.get('skill_name')}', expected '{self.root.name}'", evals_file)
 
@@ -599,7 +651,7 @@ class SkillVerifier:
                 script_targets.extend(sorted(repo_evidence.glob("*.py")))
 
         if not script_targets:
-            if self.generic and not (self.root / "scripts").exists():
+            if self.generic:
                 return
             self.log_failure("PEP 723 Metadata", "No Python scripts found under scripts/")
             return
