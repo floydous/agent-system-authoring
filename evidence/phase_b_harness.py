@@ -746,6 +746,9 @@ def main() -> int:
     if not gw or not key:
         print("ERROR: GATEWAY_URL and API_KEY must be provided via environment variables.", file=sys.stderr)
         return 1
+    if not args.model:
+        print("ERROR: TARGET_MODEL environment variable or --model flag is required.", file=sys.stderr)
+        return 1
 
     cfg = RunConfig(gateway_url=gw, api_key=key, model=args.model, iterations=args.iterations, concurrency=args.concurrency)
     out_dir = Path(__file__).resolve().parent / "raw_phase_b"

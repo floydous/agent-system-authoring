@@ -1,6 +1,6 @@
 {
   "skill_name": "agent-system-authoring",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "status": "executed_v4_on_gpt_6_luna",
   "results_report": "https://github.com/floydous/agent-system-authoring/blob/main/evidence/evals_results.md",
   "description": "Eval Suite v4: 32 trigger cases with reason-first routing (12 positive incl. 6 plain-English, 10 distractor negatives, 10 unmatched 'none' negatives + 50-call solo-skill precision test) and 10 non-leading comparative tasks with 8 objective probes (T1 spec vs general hygiene separated on comp_09) and dual-order (A,B)+(B,A) swap-consistent blinded judging.",
@@ -8,7 +8,6 @@
     {
       "id": "trigger_pos_01_plain_injection_guard",
       "type": "trigger_positive",
-      "trigger": true,
       "should_trigger": true,
       "prompt": "Help me write clear behavioral rules for our support bot so it does not follow fake override commands hidden inside incoming customer emails.",
       "expected_routing": "agent-system-authoring",
@@ -17,7 +16,6 @@
     {
       "id": "trigger_pos_02_plain_tool_blurb_hijack",
       "type": "trigger_positive",
-      "trigger": true,
       "should_trigger": true,
       "prompt": "Our assistant keeps picking the newer wiki search integration even when users ask for archived 2023 PDFs because someone wrote 'BEST AND ALWAYS USE' on it—how should I rewrite those integration blurbs?",
       "expected_routing": "agent-system-authoring",
@@ -26,7 +24,6 @@
     {
       "id": "trigger_pos_03_plain_fast_model_math_params",
       "type": "trigger_positive",
-      "trigger": true,
       "should_trigger": true,
       "prompt": "A fast non-thinking model keeps miscalculating totals right before calling our billing function—can we restructure the function arguments and order to fix the math accuracy?",
       "expected_routing": "agent-system-authoring",
@@ -35,7 +32,6 @@
     {
       "id": "trigger_pos_04_plain_word_ban_rules",
       "type": "trigger_positive",
-      "trigger": true,
       "should_trigger": true,
       "prompt": "Every time we try to keep our release notes assistant from saying 'bug' or 'crash' by telling it 'use defect instead', it still slips in 'crash' and 'consecutive-bug'—how should we phrase those instructions?",
       "expected_routing": "agent-system-authoring",
@@ -44,7 +40,6 @@
     {
       "id": "trigger_pos_05_plain_multi_provider_funcs",
       "type": "trigger_positive",
-      "trigger": true,
       "should_trigger": true,
       "prompt": "Review how we declare optional parameters and strict validation on our bot's functions so the definitions actually work cleanly across OpenAI, Claude, and Gemini.",
       "expected_routing": "agent-system-authoring",
@@ -53,7 +48,6 @@
     {
       "id": "trigger_pos_06_plain_reusable_skill_folder",
       "type": "trigger_positive",
-      "trigger": true,
       "should_trigger": true,
       "prompt": "Package our data-pipeline review checklist and Python scripts into a reusable portable skill folder that coding agents can discover and load lazily.",
       "expected_routing": "agent-system-authoring",
@@ -62,7 +56,6 @@
     {
       "id": "trigger_pos_07_tech_strict_sql_schema",
       "type": "trigger_positive",
-      "trigger": true,
       "should_trigger": true,
       "prompt": "Design an OpenAI strict: true function tool definition for execute_sql_query with explicit mutual negative boundaries against search_knowledge_base.",
       "expected_routing": "agent-system-authoring",
@@ -71,7 +64,6 @@
     {
       "id": "trigger_pos_08_tech_legacy_prompt_audit",
       "type": "trigger_positive",
-      "trigger": true,
       "should_trigger": true,
       "prompt": "Refactor our 2,500-word legacy compliance system prompt to strip out 'Fields Medalist' persona fluff and redundant reasoning-model 'think step by step' directives.",
       "expected_routing": "agent-system-authoring",
@@ -80,7 +72,6 @@
     {
       "id": "trigger_pos_09_tech_catalog_enum_scaling",
       "type": "trigger_positive",
-      "trigger": true,
       "should_trigger": true,
       "prompt": "Our agent's 42-tool catalog with a 400-value inline enum causes wrong function selection and 400 INVALID_ARGUMENT schema errors—help prune and redesign the toolset.",
       "expected_routing": "agent-system-authoring",
@@ -89,7 +80,6 @@
     {
       "id": "trigger_pos_10_tech_skill_md_refactor",
       "type": "trigger_positive",
-      "trigger": true,
       "should_trigger": true,
       "prompt": "Audit our SKILL.md frontmatter triggers and references—right now it is 700 lines long with deeply nested ../../ doc chains and pycache leaks.",
       "expected_routing": "agent-system-authoring",
@@ -98,7 +88,6 @@
     {
       "id": "trigger_pos_11_tech_prompt_eval_design",
       "type": "trigger_positive",
-      "trigger": true,
       "should_trigger": true,
       "prompt": "Design a repeated-run prompt evaluation harness with N >= 5 iterations, TARa@5 stability reporting, and prompt-level paired statistical tests for our agent instructions.",
       "expected_routing": "agent-system-authoring",
@@ -107,7 +96,6 @@
     {
       "id": "trigger_pos_12_tech_legal_prompt_boundaries",
       "type": "trigger_positive",
-      "trigger": true,
       "should_trigger": true,
       "prompt": "Harden the developer instructions for our contract summarization assistant before it ingests untrusted third-party vendor PDF extracts.",
       "expected_routing": "agent-system-authoring",
@@ -116,7 +104,6 @@
     {
       "id": "trigger_neg_01_postgres_select",
       "type": "trigger_negative",
-      "trigger": false,
       "should_trigger": false,
       "prompt": "Run a PostgreSQL query against the billing database to list the top 15 accounts by refunded revenue over the past 30 days.",
       "expected_routing": "postgres-sql",
@@ -125,7 +112,6 @@
     {
       "id": "trigger_neg_02_postgres_ddl",
       "type": "trigger_negative",
-      "trigger": false,
       "should_trigger": false,
       "prompt": "Create a PostgreSQL DDL migration with indexes and JSONB columns for storing multi-turn chat telemetry logs.",
       "expected_routing": "postgres-sql",
@@ -134,7 +120,6 @@
     {
       "id": "trigger_neg_03_python_keyerror",
       "type": "trigger_negative",
-      "trigger": false,
       "should_trigger": false,
       "prompt": "Debug why our Python async stream dispatcher raises a KeyError on line 88 when parsing partial webhook chunks.",
       "expected_routing": "python-debugging",
@@ -143,7 +128,6 @@
     {
       "id": "trigger_neg_04_live_stripe_refund",
       "type": "trigger_negative",
-      "trigger": false,
       "should_trigger": false,
       "prompt": "Issue a $49.99 prorated refund on Stripe for invoice inv_44182 and send the customer a settlement receipt email.",
       "expected_routing": "stripe-billing",
@@ -152,7 +136,6 @@
     {
       "id": "trigger_neg_05_react_drawer_ui",
       "type": "trigger_negative",
-      "trigger": false,
       "should_trigger": false,
       "prompt": "Refactor the React Tailwind component that displays collapsible message attachments so it scrolls smoothly on narrow mobile screens.",
       "expected_routing": "react-frontend",
@@ -161,7 +144,6 @@
     {
       "id": "trigger_neg_06_git_squash_tag",
       "type": "trigger_negative",
-      "trigger": false,
       "should_trigger": false,
       "prompt": "Squash the last three local feature commits, rebase onto main, and push an annotated v2.1.0 Git tag to origin.",
       "expected_routing": "git-ops",
@@ -170,7 +152,6 @@
     {
       "id": "trigger_neg_07_repo_readme",
       "type": "trigger_negative",
-      "trigger": false,
       "should_trigger": false,
       "prompt": "Write a repository README.md for our open-source Python CLI covering installation, environment variables, and contributing steps.",
       "expected_routing": "docs-readme",
@@ -179,7 +160,6 @@
     {
       "id": "trigger_neg_08_github_actions_pytest",
       "type": "trigger_negative",
-      "trigger": false,
       "should_trigger": false,
       "prompt": "Create a GitHub Actions CI workflow YAML that runs ruff and pytest across Python 3.11 and 3.12 on every pull request.",
       "expected_routing": "ci-cd-pipelines",
@@ -188,7 +168,6 @@
     {
       "id": "trigger_neg_09_dbt_incremental",
       "type": "trigger_negative",
-      "trigger": false,
       "should_trigger": false,
       "prompt": "Build an incremental dbt SQL model and not-null schema.yml assertions for daily settlement volume rollups.",
       "expected_routing": "dbt-analytics",
@@ -197,7 +176,6 @@
     {
       "id": "trigger_neg_10_python_unicode_error",
       "type": "trigger_negative",
-      "trigger": false,
       "should_trigger": false,
       "prompt": "Fix the UnicodeDecodeError raised in our Python batch importer when reading legacy Windows-1252 CSV files.",
       "expected_routing": "python-debugging",
@@ -206,7 +184,6 @@
     {
       "id": "trigger_none_01_app_config_json_schema",
       "type": "trigger_negative_none",
-      "trigger": false,
       "should_trigger": false,
       "prompt": "Write a JSON Schema Draft 2020-12 file to validate our desktop Electron app's settings.json user preference config with strict additionalProperties: false.",
       "expected_routing": "none",
@@ -215,7 +192,6 @@
     {
       "id": "trigger_none_02_pydantic_csv_model",
       "type": "trigger_negative_none",
-      "trigger": false,
       "should_trigger": false,
       "prompt": "Write a Pydantic v2 BaseModel class with field validators to parse and coerce incoming logistics shipment CSV rows.",
       "expected_routing": "none",
@@ -224,7 +200,6 @@
     {
       "id": "trigger_none_03_openapi_rest_spec",
       "type": "trigger_negative_none",
-      "trigger": false,
       "should_trigger": false,
       "prompt": "Author an OpenAPI 3.1 YAML contract for our public REST HTTP POST /v1/orders microservice endpoint with bearer auth and 422 error responses.",
       "expected_routing": "none",
@@ -233,7 +208,6 @@
     {
       "id": "trigger_none_04_qdrant_rag_tuning",
       "type": "trigger_negative_none",
-      "trigger": false,
       "should_trigger": false,
       "prompt": "Tune our Qdrant vector database chunk size, overlap window, HNSW ef_construct, and cross-encoder reranking cutoff.",
       "expected_routing": "none",
@@ -242,7 +216,6 @@
     {
       "id": "trigger_none_05_summarize_paper",
       "type": "trigger_negative_none",
-      "trigger": false,
       "should_trigger": false,
       "prompt": "Summarize the methodology and main findings of the 2023 'Lost in the Middle' TACL paper into three plain-English takeaways.",
       "expected_routing": "none",
@@ -251,7 +224,6 @@
     {
       "id": "trigger_none_06_employee_handbook",
       "type": "trigger_negative_none",
-      "trigger": false,
       "should_trigger": false,
       "prompt": "Draft a human-resources Markdown onboarding handbook page explaining employee PTO requests, travel reimbursement caps, and expense approval steps.",
       "expected_routing": "none",
@@ -260,7 +232,6 @@
     {
       "id": "trigger_none_07_cover_letter_edit",
       "type": "trigger_negative_none",
-      "trigger": false,
       "should_trigger": false,
       "prompt": "Tighten my backend engineer cover letter so it never uses clichés like 'synergy', 'passionate', or 'game-changer' while keeping an energetic tone.",
       "expected_routing": "none",
@@ -269,7 +240,6 @@
     {
       "id": "trigger_none_08_api_pricing_sheet",
       "type": "trigger_negative_none",
-      "trigger": false,
       "should_trigger": false,
       "prompt": "Build a clean comparison table of per-million token pricing and batch API discounts across OpenAI, Anthropic, and Google Gemini tiers.",
       "expected_routing": "none",
@@ -278,7 +248,6 @@
     {
       "id": "trigger_none_09_graphql_schema",
       "type": "trigger_negative_none",
-      "trigger": false,
       "should_trigger": false,
       "prompt": "Design a GraphQL schema with Query, Mutation, Input objects, and enum types for our e-commerce storefront inventory backend.",
       "expected_routing": "none",
@@ -287,7 +256,6 @@
     {
       "id": "trigger_none_10_k8s_network_policy",
       "type": "trigger_negative_none",
-      "trigger": false,
       "should_trigger": false,
       "prompt": "Write a Kubernetes Helm values.yaml schema and strict NetworkPolicy manifest isolating ingress and egress traffic in our staging namespace.",
       "expected_routing": "none",

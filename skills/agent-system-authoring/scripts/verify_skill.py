@@ -31,6 +31,14 @@ from typing import Any, Dict, List, Optional, Tuple
 
 SKILL_NAME_PATTERN = re.compile(r"^[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,63}$")
 SNAKE_CASE_PATTERN = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
+ALLOWED_FRONTMATTER_KEYS = {
+    "name",
+    "description",
+    "license",
+    "compatibility",
+    "metadata",
+    "allowed-tools",
+}
 ALLOWED_TIERS = {
     "T1",
     "T2",
@@ -54,6 +62,9 @@ SECRET_PATTERNS = [
     re.compile(r"\bgho_[A-Za-z0-9_]{20,}\b"),
 ]
 LEAKED_INTERNAL_RULE_RE = re.compile(r"\bR-(?:SYS|TOOL|SKILL)-\d{2}\b")
+WINDOWS_DRIVE_RE = re.compile(r"^[A-Za-z]:")
+FENCED_CODE_BLOCK_RE = re.compile(r"(?m)^([ \t]*)(`{3,}|~{3,})[^\n]*\n.*?^[ \t]*\2[ \t]*$", re.DOTALL)
+INLINE_CODE_SPAN_RE = re.compile(r"`[^`\n]+`")
 
 
 class SkillVerificationError:
@@ -91,9 +102,32 @@ class SkillVerifier:
         if len(self.errors) == err_before:
             self.passed_checks.append(check_name)
 
+    @staticmethod
+    def _strip_inline_comment(raw_val: str) -> str:
+        """Strip unquoted YAML inline comments preceded by whitespace."""
+        s = raw_val.strip()
+        if not s:
+            return s
+        if s[0] in ("'", '"'):
+            quote = s[0]
+            escaped = False
+            for idx in range(1, len(s)):
+                ch = s[idx]
+                if escaped:
+                    escaped = False
+                    continue
+                if quote == '"' and ch == "\\":
+                    escaped = True
+                    continue
+                if ch == quote:
+                    return s[: idx + 1]
+            return s
+        match = re.search(r"\s+#.*$", s)
+        return s[: match.start()].rstrip() if match else s
+
     def _parse_yaml_scalar(self, raw_val: str) -> Any:
         """Parse a single YAML scalar preserving native int/float/bool/null unless quoted."""
-        s = raw_val.strip()
+        s = self._strip_inline_comment(raw_val)
         if len(s) >= 2 and ((s[0] == '"' and s[-1] == '"') or (s[0] == "'" and s[-1] == "'")):
             return s[1:-1]
         low = s.lower()
@@ -130,37 +164,53 @@ class SkillVerifier:
         parsed_dict: Dict[str, Any] = {}
         current_key: Optional[str] = None
         multiline_accum: List[str] = []
-        is_folded = False
+        block_mode: Optional[str] = None  # "folded" or "literal"
+
+        def flush_block() -> None:
+            nonlocal multiline_accum, block_mode
+            if current_key and block_mode:
+                sep = "\n" if block_mode == "literal" else " "
+                parsed_dict[current_key] = sep.join(multiline_accum)
+                multiline_accum = []
+                block_mode = None
 
         for line in raw_yaml.splitlines():
             stripped = line.strip()
-            if not stripped or stripped.startswith("#"):
+            if not stripped:
+                if block_mode == "literal":
+                    multiline_accum.append("")
+                continue
+            if stripped.startswith("#") and not block_mode:
                 continue
             indent = len(line) - len(line.lstrip())
             if indent == 0 and ":" in stripped and not stripped.startswith("-"):
-                if current_key and is_folded:
-                    parsed_dict[current_key] = " ".join(multiline_accum)
-                    multiline_accum = []
-                    is_folded = False
+                flush_block()
                 k, v = stripped.split(":", 1)
                 current_key = k.strip()
-                raw_val = v.strip()
-                if raw_val in (">", "|", ">-", "|-"):
-                    is_folded = True
+                raw_val = self._strip_inline_comment(v)
+                if raw_val in (">", ">-"):
+                    block_mode = "folded"
+                elif raw_val in ("|", "|-"):
+                    block_mode = "literal"
                 elif not raw_val:
                     parsed_dict[current_key] = {}
                 else:
                     parsed_dict[current_key] = self._parse_yaml_scalar(raw_val)
             elif indent > 0 and current_key:
-                if is_folded:
+                if block_mode:
                     multiline_accum.append(stripped)
+                elif stripped.startswith("- "):
+                    item_val = self._parse_yaml_scalar(stripped[2:])
+                    if isinstance(parsed_dict.get(current_key), dict) and not parsed_dict[current_key]:
+                        parsed_dict[current_key] = [item_val]
+                    elif isinstance(parsed_dict.get(current_key), list):
+                        parsed_dict[current_key].append(item_val)
                 elif isinstance(parsed_dict.get(current_key), dict) and ":" in stripped:
                     sub_k, sub_v = stripped.split(":", 1)
-                    sub_raw = sub_v.strip()
+                    sub_raw = self._strip_inline_comment(sub_v)
                     parsed_dict[current_key][sub_k.strip()] = "" if not sub_raw else self._parse_yaml_scalar(sub_raw)
 
-        if current_key and is_folded:
-            parsed_dict[current_key] = " ".join(multiline_accum)
+        flush_block()
 
         return parsed_dict, body, end_idx + 1
 
@@ -204,10 +254,40 @@ class SkillVerifier:
         self.log_if_clean(err_before, "Directory Layout and Casing")
 
     def verify_packaging_hygiene(self) -> None:
-        """Verify absence of caches, dev test runners, mock files, and hardcoded credentials."""
+        """Verify absence of caches, dev test runners, mock files, env/key files, and hardcoded credentials."""
         err_before = len(self.errors)
         forbidden_dir_names = {"__pycache__", ".pytest_cache", ".mypy_cache", "tests"}
-        forbidden_file_names = {"pytest.ini", "tox.ini", "conftest.py", ".DS_Store", "Thumbs.db"}
+        forbidden_file_names = {
+            "pytest.ini",
+            "tox.ini",
+            "conftest.py",
+            ".DS_Store",
+            "Thumbs.db",
+            ".env",
+            "id_rsa",
+            "id_ed25519",
+        }
+        allowed_env_templates = {".env.example", ".env.sample", ".env.template"}
+        forbidden_secret_suffixes = {".pem", ".key", ".p12", ".pfx"}
+        text_scan_suffixes = {
+            ".md",
+            ".py",
+            ".json",
+            ".yaml",
+            ".yml",
+            ".sh",
+            ".bash",
+            ".ps1",
+            ".txt",
+            ".toml",
+            ".cfg",
+            ".ini",
+            ".js",
+            ".ts",
+            ".mjs",
+            ".cjs",
+            ".env",
+        }
 
         for path in self.root.rglob("*"):
             rel = path.relative_to(self.root)
@@ -220,14 +300,24 @@ class SkillVerifier:
                     self.log_failure("Packaging Hygiene", f"Disallowed directory present: {rel}", path)
                 continue
 
-            if path.name in forbidden_file_names or name_lower.startswith("mock_") or name_lower.startswith("test_"):
+            is_secret_env = name_lower.startswith(".env.") and name_lower not in allowed_env_templates
+            if (
+                path.name in forbidden_file_names
+                or is_secret_env
+                or path.suffix.lower() in forbidden_secret_suffixes
+                or name_lower.startswith("mock_")
+                or name_lower.startswith("test_")
+            ):
                 self.log_failure("Packaging Hygiene", f"Disallowed file present: {rel}", path)
                 continue
 
             if path.suffix == ".jsonl":
                 self.log_failure("Packaging Hygiene", f"JSONL trace file inside installable skill: {rel}", path)
 
-            if path.suffix in {".md", ".py", ".json", ".yaml", ".yml"}:
+            should_scan = (path.suffix.lower() in text_scan_suffixes) or (
+                not path.suffix and path.stat().st_size <= 524_288
+            )
+            if should_scan:
                 try:
                     text = path.read_text(encoding="utf-8")
                 except UnicodeDecodeError:
@@ -257,11 +347,19 @@ class SkillVerifier:
             self.log_failure("Frontmatter Schema", "Frontmatter parsed to empty dict or missing closing '---'", skill_md)
             return
 
+        unknown_keys = sorted(set(fm.keys()) - ALLOWED_FRONTMATTER_KEYS)
+        if unknown_keys:
+            self.log_failure(
+                "Frontmatter Schema",
+                f"Unrecognized top-level frontmatter field(s) {unknown_keys}; place custom attributes under 'metadata'",
+                skill_md,
+            )
+
         name = fm.get("name", "")
         if not isinstance(name, str) or not name:
             self.log_failure("Frontmatter Schema", "Frontmatter missing non-empty 'name' field", skill_md)
         else:
-            if not SKILL_NAME_PATTERN.match(name):
+            if not SKILL_NAME_PATTERN.fullmatch(name):
                 self.log_failure("Frontmatter Schema", f"Frontmatter name '{name}' fails specification regex", skill_md)
             if name != self.root.name:
                 self.log_failure("Frontmatter Schema", f"Frontmatter name '{name}' must match root directory '{self.root.name}'", skill_md)
@@ -356,6 +454,21 @@ class SkillVerifier:
 
         self.log_if_clean(err_before, "SKILL.md Line Budget & Section Hierarchy")
 
+    @staticmethod
+    def _strip_code_from_markdown(text: str) -> str:
+        """Remove fenced code blocks and inline code spans before scanning Markdown links."""
+        normalized = text.replace("\r\n", "\n")
+        no_fences = FENCED_CODE_BLOCK_RE.sub("", normalized)
+        return INLINE_CODE_SPAN_RE.sub("", no_fences)
+
+    @staticmethod
+    def _is_absolute_link(clean_target: str) -> bool:
+        return (
+            clean_target.startswith("/")
+            or bool(WINDOWS_DRIVE_RE.match(clean_target))
+            or Path(clean_target).is_absolute()
+        )
+
     def verify_reference_linking(self) -> None:
         """Verify shallow relative linking invariants and absence of orphaned references."""
         err_before = len(self.errors)
@@ -365,10 +478,11 @@ class SkillVerifier:
             return
 
         content = skill_md.read_text(encoding="utf-8")
-        links = re.findall(r"\[([^\]]+)\]\(([^)]+)\)", content)
+        link_scannable = self._strip_code_from_markdown(content)
+        links = re.findall(r"\[([^\]]+)\]\(([^)]+)\)", link_scannable)
 
         ref_links: List[Tuple[str, str]] = []
-        headings = [h.strip().lower() for h in re.findall(r"^#+\s+(.+)$", content, re.MULTILINE)]
+        headings = [h.strip().lower() for h in re.findall(r"^#+\s+(.+)$", link_scannable, re.MULTILINE)]
         heading_slugs = {re.sub(r"[^\w\- ]", "", h).replace(" ", "-") for h in headings}
 
         for text, target in links:
@@ -376,7 +490,7 @@ class SkillVerifier:
                 self.log_failure("Reference Linking", f"Found empty link label or target: [{text}]({target})", skill_md)
                 continue
 
-            if target.startswith("http://") or target.startswith("https://"):
+            if target.startswith(("http://", "https://", "mailto:")):
                 continue
 
             if target.startswith("#"):
@@ -385,16 +499,38 @@ class SkillVerifier:
                     self.log_failure("Reference Linking", f"Anchor fragment link '{target}' does not match any heading in SKILL.md", skill_md)
                 continue
 
-            if "../" in target:
-                self.log_failure("Reference Linking", f"Reference link '{target}' contains multi-hop parent traversal '../'", skill_md)
+            clean_target = target.split("#", 1)[0].strip()
+            if not clean_target:
+                continue
 
-            clean_target = target.split("#")[0]
+            if "\\" in clean_target:
+                self.log_failure("Reference Linking", f"Link '{target}' uses non-portable backslash separator '\\'", skill_md)
+                continue
+
+            if self._is_absolute_link(clean_target):
+                self.log_failure("Reference Linking", f"Link '{target}' uses an absolute path instead of a skill-relative path", skill_md)
+                continue
+
+            target_parts = [p for p in clean_target.split("/") if p and p != "."]
+            if ".." in target_parts:
+                self.log_failure("Reference Linking", f"Reference link '{target}' contains parent traversal '..'", skill_md)
+                continue
+
+            if target_parts and target_parts[0] == "references" and len(target_parts) > 2:
+                self.log_failure("Reference Linking", f"Reference link '{target}' exceeds one-level depth under references/", skill_md)
+                continue
+
             resolved = (self.root / clean_target).resolve()
+            try:
+                resolved.relative_to(self.root)
+            except ValueError:
+                self.log_failure("Reference Linking", f"Relative link escapes skill root: [{text}]({target})", skill_md)
+                continue
+
             if not resolved.exists():
                 self.log_failure("Reference Linking", f"Broken relative link: [{text}]({target}) -> missing path {resolved}", skill_md)
-            else:
-                if "references/" in target:
-                    ref_links.append((text, clean_target))
+            elif target_parts and target_parts[0] == "references":
+                ref_links.append((text, clean_target))
 
         if refs_dir.exists():
             if not self.generic and len(ref_links) < 3:
@@ -402,20 +538,34 @@ class SkillVerifier:
 
             skill_linked_files = {Path(t).name for _, t in ref_links}
             ledger_path = refs_dir / "evidence_ledger.md"
-            ledger_text = ledger_path.read_text(encoding="utf-8") if ledger_path.exists() else ""
+            ledger_text = ledger_path.read_text(encoding="utf-8") if (not self.generic and ledger_path.exists()) else ""
 
-            for ref_file in refs_dir.glob("*.md"):
-                is_linked = (ref_file.name in skill_linked_files) or (ref_file.name in ledger_text) or (ref_file.name == "evidence_ledger.md")
+            for ref_file in sorted(refs_dir.rglob("*.md")):
+                if ref_file.parent != refs_dir:
+                    rel_nested = ref_file.relative_to(self.root)
+                    self.log_failure("Reference Linking", f"Nested reference file exceeds one-level depth under references/: {rel_nested}", ref_file)
+                    continue
+
+                if self.generic:
+                    is_linked = ref_file.name in skill_linked_files
+                else:
+                    is_linked = (ref_file.name in skill_linked_files) or (ref_file.name in ledger_text) or (ref_file.name == "evidence_ledger.md")
                 if not is_linked:
                     self.log_failure("Reference Linking", f"Orphaned reference file not linked anywhere: {ref_file.name}", ref_file)
 
-                ref_content = ref_file.read_text(encoding="utf-8")
+                ref_content = self._strip_code_from_markdown(ref_file.read_text(encoding="utf-8"))
                 ref_links_in_doc = re.findall(r"\[([^\]]+)\]\(([^)]+)\)", ref_content)
                 for ltext, ltarget in ref_links_in_doc:
-                    if ltarget.startswith(("http://", "https://", "#")):
+                    if ltarget.startswith(("http://", "https://", "mailto:", "#")):
                         continue
-                    clean_l = ltarget.split("#")[0]
+                    clean_l = ltarget.split("#", 1)[0].strip()
                     if not clean_l:
+                        continue
+                    if "\\" in clean_l:
+                        self.log_failure("Reference Linking", f"Link in {ref_file.name} uses non-portable backslash separator: {ltarget}", ref_file)
+                        continue
+                    if self._is_absolute_link(clean_l):
+                        self.log_failure("Reference Linking", f"Absolute path link in {ref_file.name}: {ltarget}", ref_file)
                         continue
                     if "evidence/" in clean_l:
                         self.log_failure("Reference Linking", f"Relative link to repo-level evidence/ in {ref_file.name}: {ltarget} (use canonical GitHub URL)", ref_file)
@@ -446,6 +596,7 @@ class SkillVerifier:
             self.log_failure("Evidence Ledger", "Legacy 'Grade A' or 'Grade B' vocabulary found in evidence_ledger.md", ledger_path)
 
         row_tiers: Dict[str, str] = {}
+        duplicate_rules: List[str] = []
         for line in text.splitlines():
             if not line.startswith("| **R-"):
                 continue
@@ -453,11 +604,20 @@ class SkillVerifier:
             if len(cols) >= 4:
                 rid = cols[0].strip("* ")
                 tier = cols[3].strip("* ")
+                if rid in row_tiers:
+                    duplicate_rules.append(rid)
                 row_tiers[rid] = tier
+
+        if duplicate_rules:
+            self.log_failure("Evidence Ledger", f"Duplicate rule IDs in ledger table: {sorted(set(duplicate_rules))}", ledger_path)
 
         missing_rules = [rid for rid in EXPECTED_RULE_IDS if rid not in row_tiers]
         if missing_rules:
             self.log_failure("Evidence Ledger", f"Missing expected rule IDs in ledger table: {missing_rules}", ledger_path)
+
+        unexpected_rules = sorted(set(row_tiers.keys()) - set(EXPECTED_RULE_IDS))
+        if unexpected_rules:
+            self.log_failure("Evidence Ledger", f"Unexpected rule IDs in ledger table: {unexpected_rules}", ledger_path)
 
         for rid, tier in row_tiers.items():
             if tier not in ALLOWED_TIERS:
@@ -469,7 +629,18 @@ class SkillVerifier:
         """Return True when a property schema (or anyOf branch) declares a structural JSON Schema constraint."""
         if not isinstance(schema_obj, dict):
             return False
-        constraint_keys = {"minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "pattern", "format", "enum"}
+        constraint_keys = {
+            "minimum",
+            "maximum",
+            "exclusiveMinimum",
+            "exclusiveMaximum",
+            "multipleOf",
+            "minItems",
+            "maxItems",
+            "pattern",
+            "format",
+            "enum",
+        }
         if any(k in schema_obj for k in constraint_keys):
             return True
         for branch in schema_obj.get("anyOf") or []:
@@ -552,6 +723,8 @@ class SkillVerifier:
                 self.log_failure("Templates", "system_prompt_template.md missing {{agent_identity}} or {{rules_content}} placeholders", sys_tmpl)
             if "reminder" not in md_content.lower():
                 self.log_failure("Templates", "system_prompt_template.md missing trailing reminder section", sys_tmpl)
+            if LEAKED_INTERNAL_RULE_RE.search(md_content):
+                self.log_failure("Templates", "system_prompt_template.md leaks internal agent-system-authoring rule IDs (R-SYS/TOOL/SKILL)", sys_tmpl)
 
         if not skill_tmpl.exists():
             self.log_failure("Templates", "assets/templates/skill_template.md missing", skill_tmpl)
@@ -702,9 +875,10 @@ def main() -> int:
     args = parser.parse_args()
 
     target_path = Path(args.target_dir).resolve()
-    print(f"=== Verifying Agent Skill Package: {target_path} ===")
-
     verifier = SkillVerifier(target_path, generic=args.generic)
+    mode_label = "generic" if verifier.generic else "agent-system-authoring"
+    print(f"=== Verifying Agent Skill Package: {target_path} (mode: {mode_label}) ===")
+
     success = verifier.run_all()
 
     print("\n--- Passed Checks ---")

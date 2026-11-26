@@ -4,18 +4,18 @@ description: Authors and audits LLM system prompts, AI agent function-calling to
 license: MIT
 metadata:
   author: "floydous"
-  version: "1.3.0"
+  version: "1.4.0"
 ---
 
 # Agent System Authoring
 
 ## Overview
-Follow these directives to author production system prompts, multi-provider tool definitions, and portable Agent Skills (`T1` Verified Spec, `T2` Measured on `GPT 6 Luna` only, `T3` Vendor Guidance, `T4` Mechanism, `T5` Pre-2026 Literature, `Methodology`, `Project convention`). Statistical tables and limitations live in [references/evidence_ledger.md](references/evidence_ledger.md) and [references/empirical_results.md](references/empirical_results.md).
+Follow these directives to author production system prompts, multi-provider tool definitions, and portable Agent Skills (`T1` Verified Spec, `T2` Measured Empirically across `GPT 6 Luna`, `Particle-1`, and/or `Nemotron 3.5 Lightning`, `T3` Vendor Guidance, `T4` Mechanism, `T5` Pre-2026 Literature, `Methodology`, `Project convention`). Statistical tables and limitations live in [references/evidence_ledger.md](references/evidence_ledger.md) and [references/empirical_results.md](references/empirical_results.md).
 
 ## Authoring Workflow
 
 ### Step 1: Structure System Prompts & Boundaries
-1. **Minimize active rules (`R-SYS-01`, T5)**: Split multi-step workflows into focused phases rather than one overloaded rule dump.
+1. **Minimize active rules (`R-SYS-01`, T2 + T5)**: Split multi-step workflows into focused phases rather than one overloaded rule dump (scaling `10 -> 50` behavioral rules cut strict compliance `100% -> 58.8%` and multiplied reasoning tokens `3.5×` on `GPT 6 Luna`).
 2. **Isolate untrusted data (`R-SYS-03`, T3)**: Enforce `Platform > Developer > User > Tool/Untrusted Data`; wrap CRM tickets, PDFs, or web text in data delimiters and deny authority to imperatives inside them.
 3. **Place boundaries purposefully (`R-SYS-02`, T5)**: Put core invariants first, strict output rules near the end, and compact retrieved data in the middle (explicit boundary-vs-recall trade-off).
 4. **Use clean delimiters (`R-SYS-08`, T3)**: Default to flat Markdown `###` headers (or XML tags for Claude); never use literal `[A|B|C]` brackets when a single concrete value is expected.
@@ -27,24 +27,29 @@ Follow these directives to author production system prompts, multi-provider tool
 ### Step 2: Author Multi-Provider Tool & Function Schemas
 1. **Name semantically in `snake_case` (`R-TOOL-01` T4, `R-TOOL-02` T5)**: Use clear `[verb]_[noun]` names (service-prefixed if multi-service), never opaque IDs.
 2. **Write neutral 3–4+ sentence descriptions (`R-TOOL-03` T3, `R-TOOL-04` T2)**: State purpose, positive triggers, sister-tool negative boundaries, parameters, and caveats; omit promotional superlatives (`"best"`, `"preferred"`).
-3. **Pair descriptions with provider-supported structural constraints (`R-TOOL-05` T2, `R-TOOL-10` T1)**: Put exact syntax examples, no-space separators (e.g., `"lat,lon"`), units (`cents`, `ms`), date-interval conventions (`[start, end)`), formulas, and bounds in parameter `description`s, AND add structural JSON Schema keywords where supported: on **OpenAI `strict: true`**, encode `pattern`, `format`, `minimum`/`exclusiveMinimum`/`maximum`, and `minItems`/`maxItems`; on **Anthropic `strict: true`**, use only simple `pattern`, `format`, and `minItems` (`0`/`1`), moving `minimum`/`maximum`/`minLength`/`maxLength` to `description` + client validation (those keywords trigger HTTP `400`); on **Gemini**, use `minimum`, `maximum`, `format`, and `minItems`/`maxItems`.
+3. **Pair descriptions with provider-supported structural constraints (`R-TOOL-05` T2, `R-TOOL-10` T1)**: Put exact syntax examples, no-space separators (e.g., `"lat,lon"`), units (`cents`, `ms`), date-interval conventions (`[start, end)`), formulas, and bounds in parameter `description`s, AND add structural JSON Schema keywords where supported:
+   - **OpenAI (`strict: true`)**: Encode `pattern`, `format`, `minimum`/`exclusiveMinimum`/`maximum`, and `minItems`/`maxItems`.
+   - **Anthropic (`strict: true`)**: Use only simple `pattern`, `format`, and `minItems` (`0`/`1`); move `minimum`/`maximum`/`minLength`/`maxLength` to `description` + client validation (those trigger HTTP `400`).
+   - **Gemini**: Use `parametersJsonSchema` for standard JSON Schema (`pattern`, `additionalProperties`, `$ref`, `anyOf`, `type: "null"`, numeric bounds), or legacy OpenAPI-subset `parameters` (`minimum`, `maximum`, `format`, `minItems`/`maxItems`).
 4. **Constrain closed sets & prune catalogs (`R-TOOL-06` T1, `R-TOOL-07` T3, `R-TOOL-08` T4)**: Use `enum` for small closed sets; replace giant enums near grammar caps with a `string` + search tool; consolidate actions and re-anchor invariants past 50% context (`R-TOOL-12`, T5).
 5. **Match exact provider wire shapes (`R-TOOL-10`, T1)** (never mix `"name"`/`"strict"` directly alongside `"$schema"`/`"properties"`):
    - **OpenAI Chat (`strict: true`)**: `{"type": "function", "function": {"name", "description", "strict": true, "parameters": {"type": "object", "properties", "required": [<all keys>], "additionalProperties": false}}}` (nullable unions for optionals).
    - **OpenAI Responses (`strict: true`)**: Flat wrapper `{"type": "function", "name", "description", "strict": true, "parameters": {...}}` (`additionalProperties: false`, all keys `required`).
    - **Anthropic (`strict: true`)**: `{"name", "description", "strict": true, "input_schema": {"type": "object", "properties", "required": [<mandatory only>], "additionalProperties": false}}` (caps: `20` strict tools / `24` optionals / `16` unions; required emit first).
-   - **Gemini**: `{"name", "description", "parameters": {"type": "object", "properties", "required": [<mandatory only>]}}` (no `"strict": true`).
-6. **Reserve `rationale`-first strictly for zero/non-reasoning constrained decoding (`R-TOOL-11`, T2 + T4)**: **Omit `"rationale"` on standard reasoning-model tools.** Add `"rationale"` FIRST (never `"step-by-step thinking"`) ONLY when pre-emission thinking is absent or `reasoning_effort="none"`, keeping exact domain formulas and bounds on sibling fields. Starters: [assets/templates/tool_schema_template.json](assets/templates/tool_schema_template.json) (default) & [assets/templates/tool_schema_zero_reasoning_template.json](assets/templates/tool_schema_zero_reasoning_template.json) (zero-reasoning).
+   - **Gemini**: `{"name", "description", "parametersJsonSchema": {"type": "object", "properties", "required": [<mandatory only>], "additionalProperties": false}}` (preferred standard JSON Schema) or legacy OpenAPI-subset `"parameters"` (no `"strict": true`).
+6. **Reserve `rationale`-first strictly for zero/non-reasoning constrained decoding (`R-TOOL-11`, T2 + T4)**:
+   - **Omit `"rationale"` on standard reasoning-model tools**; start from [assets/templates/tool_schema_template.json](assets/templates/tool_schema_template.json).
+   - **Add `"rationale"` FIRST** (concise supporting explanation, never `"step-by-step thinking"`) ONLY when pre-emission thinking is absent or `reasoning_effort="none"`, keeping exact domain formulas and bounds on sibling fields; start from [assets/templates/tool_schema_zero_reasoning_template.json](assets/templates/tool_schema_zero_reasoning_template.json).
 
 ### Step 3: Design, Verify & Evaluate Agent Skills
-1. **Follow open-spec layout (`R-SKILL-01`–`04`, T1)**: Root `SKILL.md` (`< 500` lines, `< 5000` tokens), optional lowercase `scripts/`, `references/`, `assets/` with one-hop links (no `../`), kebab-case `name`, third-person `what + when` `description`. Starter: [assets/templates/skill_template.md](assets/templates/skill_template.md).
-2. **Keep runtime packages clean (`R-SKILL-05` convention, `R-SKILL-06` T1)**: Omit secrets, `__pycache__/`, `.pytest_cache/`, `tests/`, `mock_*`, and heavy `evidence/` traces from installable skill dirs. Use PEP 723 (`# /// script ... # ///`) stdlib `pathlib.Path` UTF-8 scripts.
+1. **Follow open-spec layout (`R-SKILL-01`–`04`, T1)**: Root `SKILL.md` (`< 500` lines, `< 5000` tokens), optional lowercase `scripts/`, `references/`, `assets/` with one-hop links from `SKILL.md` (no `../` from `SKILL.md`, never escaping skill root), kebab-case `name`, third-person `what + when` `description`. Starter: [assets/templates/skill_template.md](assets/templates/skill_template.md).
+2. **Keep runtime packages concrete & clean (`R-SKILL-05` convention, `R-SKILL-06` T1)**: Tailor workflows, checklists, and helper scripts concretely to the target domain (avoid copying repo-specific meta-harness boilerplate). Omit secrets, `.env*`, private keys, `__pycache__/`, `.pytest_cache/`, `tests/`, `mock_*`, and heavy `evidence/` traces from installable skill dirs; use PEP 723 (`# /// script ... # ///`) stdlib `pathlib.Path` UTF-8 scripts.
 3. **Audit & verify (`R-SYS-10`)**: Check [references/debunked_folklore.md](references/debunked_folklore.md), run `python scripts/verify_skill.py .`, and test over `N >= 5` repeats aggregated to prompt means before paired *t* / exact sign tests.
 
 ## References
 - [references/system_instructions_guide.md](references/system_instructions_guide.md) — System prompt rules (`R-SYS-01`–`10`) & `PC-2` caveats.
 - [references/tool_schema_guide.md](references/tool_schema_guide.md) — Provider wire shapes & schema rules (`R-TOOL-01`–`12`).
 - [references/skill_design_guide.md](references/skill_design_guide.md) — Agent Skills spec (`R-SKILL-01`–`06`) & eval design.
-- [references/evidence_ledger.md](references/evidence_ledger.md) & [references/empirical_results.md](references/empirical_results.md) — Master tier ledger & Phase A/B/C measurements.
+- [references/evidence_ledger.md](references/evidence_ledger.md) & [references/empirical_results.md](references/empirical_results.md) — Master tier ledger & Phase A–F + `H-08` measurements.
 - [references/debunked_folklore.md](references/debunked_folklore.md) & [references/unverified_hypotheses.md](references/unverified_hypotheses.md) — Refuted claims & open hypotheses.
 - [scripts/verify_skill.py](scripts/verify_skill.py) & [evals/evals.json](evals/evals.json) — Offline validator & Eval Suite v4 definitions.

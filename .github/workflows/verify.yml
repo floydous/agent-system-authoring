@@ -7,7 +7,11 @@ on:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -17,11 +21,24 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Syntax-check all Python scripts (AST parse, no bytecode)
+        run: >
+          python -B -c "import ast, pathlib;
+          [ast.parse(p.read_text(encoding='utf-8'), filename=str(p))
+          for p in sorted(pathlib.Path('.').rglob('*.py')) if '.git' not in p.parts];
+          print('AST syntax check passed.')"
+
       - name: Verify skill package conformance and hygiene
         run: python -B skills/agent-system-authoring/scripts/verify_skill.py skills/agent-system-authoring
 
-      - name: Verify offline statistical recomputation (Phase A, B & C)
+      - name: Verify skill package in --generic mode
+        run: python -B skills/agent-system-authoring/scripts/verify_skill.py --generic skills/agent-system-authoring
+
+      - name: Verify offline statistical recomputation (Phases A–F & H-08)
         run: python -B evidence/recompute_stats.py --check
 
       - name: Verify Eval Suite v4 report reproducibility
         run: python -B evidence/run_evals.py --rescore-only --check
+
+      - name: Run repository unit tests
+        run: python -B -m unittest discover -s tests -v

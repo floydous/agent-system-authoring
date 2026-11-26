@@ -500,10 +500,10 @@ print("__ASSERTIONS_PASSED__")
 
 
 def safe_exec_code(code: str, assertions: str, timeout: float = 3.0) -> bool:
-    """Executes code and assertions in an isolated Python subprocess with a strict timeout.
+    """Executes code and assertions in a short-lived Python subprocess with a timeout.
 
-    Guarantees isolation against infinite loops, hangs, environment pollution, and
-    accidental destructive filesystem/process operations.
+    Provides best-effort timeout protection and denylist guards against common
+    accidental destructive calls; this is NOT an OS-level security sandbox.
     """
     try:
         payload = json.dumps({"code": code, "assertions": assertions})
@@ -1514,7 +1514,7 @@ class StatisticsEngine:
 
     @staticmethod
     def welch_t_test_p_value(mean1: float, s1: float, n1: int, mean2: float, s2: float, n2: int) -> float:
-        """Computes approximate two-tailed p-value using Welch's t-test with standard normal approximation."""
+        """Historical Phase A unpaired normal-approximation p-value (superseded by evidence/recompute_stats.py prompt-level paired t and exact sign tests)."""
         if n1 < 2 or n2 < 2:
             return 1.0
         se_diff = math.sqrt((s1 ** 2 / n1) + (s2 ** 2 / n2))

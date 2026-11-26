@@ -10,7 +10,9 @@
 {{rules_content}}
 
 ### Untrusted Context
-[Insert retrieved documents, user payloads, or tool outputs here.]
+<untrusted_data>
+{{untrusted_context}}
+</untrusted_data>
 
 ### Trailing Reminder
 Output only the requested deliverable matching the exact format specified in System Invariants and Operational Rules.

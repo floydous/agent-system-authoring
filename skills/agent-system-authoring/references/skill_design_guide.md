@@ -13,7 +13,7 @@ An **Agent Skill** is a self-contained directory containing a `SKILL.md` entrypo
   - `references/`: Additional documentation loaded when needed.
   - `assets/`: Static templates, schemas, images, or data files.
 - **Project Conventions**:
-  For skills authored with this repository's workflow, `evals/` (`evals.json` trigger/comparative test cases) and repo-root `evidence/` (raw empirical traces and provenance scripts, kept outside `skills/<name>/` so user installs remain lightweight) are adopted as **Project conventions** rather than open-spec mandates. Keep subdirectory names lowercase and limit nesting depth cleanly (e.g., `<= 3` levels).
+  For skills authored with this repository's workflow, `evals/` (`evals.json` trigger/comparative test cases) and repo-root `evidence/` (raw empirical traces and provenance scripts, kept outside `skills/<name>/` so user installs remain lightweight) are adopted as **Project conventions** rather than open-spec mandates. Keep subdirectory names lowercase and limit nesting depth cleanly (e.g., `<= 3` levels). Tailor each skill's workflow, reference checklists, and helper scripts concretely to its target domain rather than copying repo-specific statistical harness boilerplate.
 
 ---
 
