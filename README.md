@@ -67,22 +67,26 @@ This skill gives coding agents a short, tested playbook for authoring system pro
 <table width="100%">
   <tr>
     <td width="50%" valign="top">
-      <h4><a href="skills/agent-system-authoring/references/system_instructions_guide.md">System prompts </a></h4>
-      <p> Instruction hierarchy, keeping active rule counts small, explicit word bans, clean delimiters, and skipping filler personas.</p>
+      <h4><a href="skills/agent-system-authoring/references/system_instructions_guide.md">System prompts</a></h4>
+      <p>Instruction hierarchy, keeping active rule counts small, explicit word bans, clean delimiters, and skipping filler personas.</p>
+      <br/>
     </td>
     <td width="50%" valign="top">
-      <h4><a href="skills/agent-system-authoring/references/tool_schema_guide.md">Multi-provider tool schemas </a></h4>
-      <p> Exact strict-mode JSON shapes for OpenAI, Anthropic, and Gemini, neutral tool descriptions, and parameter format rules.</p>
+      <h4><a href="skills/agent-system-authoring/references/tool_schema_guide.md">Multi-provider tool schemas</a></h4>
+      <p>Exact strict-mode JSON shapes for OpenAI, Anthropic, and Gemini, neutral tool descriptions, and parameter format rules.</p>
+      <br/>
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <h4><a href="skills/agent-system-authoring/references/skill_design_guide.md">Portable Agent Skills </a></h4>
-      <p> Spec-compliant <code>SKILL.md</code> structure, progressive disclosure, one-hop references, PEP 723 scripts, and a standalone linter.</p>
+      <h4><a href="skills/agent-system-authoring/references/skill_design_guide.md">Portable Agent Skills</a></h4>
+      <p>Spec-compliant <code>SKILL.md</code> structure, progressive disclosure, one-hop references, PEP 723 scripts, and a standalone linter.</p>
+      <br/>
     </td>
     <td width="50%" valign="top">
-      <h4><a href="skills/agent-system-authoring/references/evidence_ledger.md">Evidence and templates </a></h4>
-      <p> All 28 rules with verification tiers, a list of refuted myths, open hypotheses, and ready-to-edit starter templates.</p>
+      <h4><a href="skills/agent-system-authoring/references/evidence_ledger.md">Evidence and templates</a></h4>
+      <p>All 28 rules with verification tiers, a list of refuted myths, open hypotheses, and ready-to-edit starter templates.</p>
+      <br/>
     </td>
   </tr>
 </table>
