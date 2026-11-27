@@ -21,14 +21,14 @@ This guide documents rules for authoring LLM system instructions, tagged by evid
 ---
 
 ### R-SYS-02: Positional Geometry & Context-Placement Trade-Off
-- **Evidence Tier**: **T5 (Literature — Learned Behavior)** *(ceiling at `~2.8k` tokens in `PE-4` on `GPT 6 Luna (high)`; near-limit trade-off not re-measured)*
+- **Evidence Tier**: **T5 (Literature — Learned Behavior)** *(ceilings at `~2.8k` in `PE-4` and `~67.3k` in `LUNA-PG5` on `GPT 6 Luna (high)`; near-limit accuracy decay on older/smaller models remains T5)*
 - **Primary Citations**:
   - Liu, Lin, Hewitt, Paranjape, Bevilacqua, Petroni, & Liang (Jul 2023 / TACL 2024), *Lost in the Middle: How Language Models Use Long Contexts*, [arXiv:2307.03172](https://arxiv.org/abs/2307.03172).
   - Veseli, Chibane, Toneva, & Koller (Aug 2025 / COLM 2025), *Positional Biases Shift as Inputs Approach Context Window Limits*, [arXiv:2508.07479](https://arxiv.org/abs/2508.07479).
-  - `PE-4` in [empirical_results.md](empirical_results.md).
-- **Models Tested**: `GPT 6 Luna` (`PE-4`, `high`, `~2.8k` tokens); MPT-30B, LongChat, Claude-1.3, GPT-3.5-Turbo, LLaMA-2/3, Mistral-7B, Gemma-2-9B.
+  - `PE-4` & `LUNA-PG5` in [empirical_results.md](empirical_results.md).
+- **Models Tested**: `GPT 6 Luna` (`PE-4` `~2.8k`, `LUNA-PG5` `~67.3k`, `high`); MPT-30B, LongChat, Claude-1.3, GPT-3.5-Turbo, LLaMA-2/3, Mistral-7B, Gemma-2-9B.
 - **Verified Finding & Design Trade-Off**:
-  Retrieval and reasoning accuracy is highest when target information appears near the beginning (primacy) or end (recency) of context and degrades in the middle. Veseli et al. showed this Lost-in-the-Middle pattern is strongest up to `50%` of a model's context window; beyond `50%`, primacy bias weakens while recency distance-based bias dominates. In Phase E **`PE-4`** (`18` docs / `~2.8k` prompt tokens with embedded prompt injection, `16 × 5 = 80`/arm), `GPT 6 Luna (high)` hit **`80/80` (`100.0%`)** across Start, Middle, and End on recall, injection defense, and format (`rtok` modestly lower for `doc_middle` `-14.0, p = 4.287e-08`), showing no short-context penalty; **near-limit (>50% context) trade-offs remain T5**: placing bulky retrieved documents in the middle protects high-priority system invariants (start) and terminal output constraints (end), at the potential cost of weaker mid-context document recall.
+  Retrieval and reasoning accuracy is highest when target information appears near the beginning (primacy) or end (recency) of context and degrades in the middle. Veseli et al. showed this Lost-in-the-Middle pattern is strongest up to `50%` of a model's context window; beyond `50%`, primacy bias weakens while recency distance-based bias dominates. Both Phase E **`PE-4`** (`18` docs / `~2.8k` ptok) and Phase G **`LUNA-PG5`** (`440` docs / `~67.3k` ptok, `>50%` window, `320` calls) hit **`80/80` (`100.0%`)** across Start, Middle, and End on recall, prompt-injection defense (`560/560` combined), and format with zero LiM `rtok` penalty (`p >= 0.54` at `~67.3k`), confirming near-limit recall decay is model-dependent (**T5**): placing bulky retrieved documents in the middle still protects high-priority system invariants (start) and terminal output constraints (end) across weaker models.
 - **Authoring Directive**:
   - Place immutable system invariants at the start of context (System/Developer message).
   - Place critical output schema constraints and terminal action directives near the end of context.
@@ -50,15 +50,15 @@ This guide documents rules for authoring LLM system instructions, tagged by evid
 ---
 
 ### R-SYS-04: Prospective Memory & Trailing Reminders
-- **Evidence Tier**: **T5 (Literature — Learned Behavior)** *(tested on 3 model families; `GPT 6 Luna (high/xhigh)` showed zero formatting decay in `PB-3` & `PE-2`)*
+- **Evidence Tier**: **T5 (Literature — Learned Behavior)** *(tested on 3 model families; `GPT 6 Luna (high)` held `100%` formatting ceiling in `PE-2` & `LUNA-PG4`, with `-27.7%` `rtok` savings in `16`-turn `LUNA-PG4`)*
 - **Primary Citations**:
   - Mittal (Mar 2026 / ACL Anthology), *Did You Forget What I Asked? Prospective Memory Failures in Large Language Models*, [arXiv:2603.23530](https://arxiv.org/abs/2603.23530).
-  - `PE-2`, `PB-3`, and `SP-1` in [empirical_results.md](empirical_results.md).
-- **Models Tested**: 3 model families (>8,000 prompts); `GPT 6 Luna` (`SP-1`/`PB-3` `xhigh`, `PE-2` `high`).
+  - `LUNA-PG4`, `PE-2`, `NEMO-PE2`, `PB-3`, and `SP-1` in [empirical_results.md](empirical_results.md).
+- **Models Tested**: 3 model families (>8,000 prompts); `GPT 6 Luna` (`SP-1`/`PB-3` `xhigh`, `PE-2`/`LUNA-PG4` `high`); `Nemotron 3.5 Lightning` (`NEMO-PE2`).
 - **Verified Finding**:
   Across over `8,000` prompts and `3` model families, concurrent reasoning dropped formatting compliance by `2%–21%`, with terminal boundary constraints degrading up to `50%` (and GSM8K task accuracy dropping from `93%` to `27%` in one model). Salience-enhanced framing plus a trailing reminder restored compliance to `90%–100%` in many settings.
-- **Empirical Observations (`PB-3`, `PE-2`, `NEMO-PE2`)**:
-  On `GPT 6 Luna (high)` at `~10,917` prompt tokens (`PE-2`, `16 × 5`), `system_only` (`0.885`) vs `sandwich_reminder` (`0.870`, `p = 0.6062`) held `80/80` (`100.0%`) pure formatting in both arms (all misses were counting arithmetic). On small non-reasoning **`Nemotron 3.5 Lightning` (`30B-A3B` Mamba-2 SSM, `thinking_off`, `~13,778` ptok, `NEMO-PE2`)**, pure formatting broke below ceiling (`json_ok` and `sentinel_ok`: `82.5%` vs `88.8%`, `+6.2 pp`, `t(15) = 0.89, p = 0.3863`; overall `0.530` vs `0.558`, `p = 0.3413`) with a modest, non-significant reminder shift. Trailing reminders remain recommended (**T5**) for standard models under heavy reasoning load or long multi-turn sessions.
+- **Empirical Observations (`PB-3`, `PE-2`, `NEMO-PE2`, `LUNA-PG4`)**:
+  On `GPT 6 Luna (high)` at `~10,917` prompt tokens (`PE-2`, `16 × 5`), `system_only` (`0.885`) vs `sandwich_reminder` (`0.870`, `p = 0.6062`) held `80/80` (`100.0%`) pure formatting in both arms. In **`16`-turn `LUNA-PG4`** (`~7.6k` ptok, subtle trigger), both arms again hit `80/80` (`100.0%`), yet `trailing_reminder` cut **`rtok` by `-27.7%` unanimously (`67.0 -> 48.4`, `t(15) = -11.85, p = 5.157e-09`, `16/16` prompts)** and latency `-0.46s` (`p = 0.0290`). On non-reasoning **`Nemotron 3.5 Lightning` (`NEMO-PE2`, `~13,778` ptok)**, pure formatting broke below ceiling (`82.5%` vs `88.8%`, `p = 0.3863`, non-significant). Trailing reminders remain recommended (**T5**) for standard models and multi-turn loops.
 - **Authoring Directive**:
   - Under demanding reasoning tasks on standard models or long multi-step sessions, append a concise trailing reminder summarizing terminal output invariants adjacent to the generation boundary.
 
@@ -99,13 +99,14 @@ This guide documents rules for authoring LLM system instructions, tagged by evid
 ---
 
 ### R-SYS-07: Native Reasoning Models & Chain-of-Thought Prompts
-- **Evidence Tier**: **T3 (Current Vendor Guidance — not measured by us)** *(supported by T5 findings on 15 models)*
+- **Evidence Tier**: **T3 (Current Vendor Guidance)** *(corroborated by non-ceiling null in `LUNA-PG2` on `GPT 6 Luna` + T5 findings on 15 models)*
 - **Primary Citations**:
   - OpenAI Reasoning Best Practices, [https://developers.openai.com/api/docs/guides/reasoning-best-practices](https://developers.openai.com/api/docs/guides/reasoning-best-practices) (retrieved 2026-11-22).
   - Li, Yu, Zhang, Chen, Zhang, Zhuang, Sadagopan, & Beniwal (May 2025), *When Thinking Fails: The Pitfalls of Reasoning for Instruction-Following in LLMs*, [arXiv:2505.11423](https://arxiv.org/abs/2505.11423).
-- **Models Tested**: OpenAI reasoning models (vendor docs); `15` models across `IFEval` and `ComplexBench` (Li et al.).
-- **Verified Guidance**:
-  OpenAI states: *"Avoid chain-of-thought prompts: Since these models perform reasoning internally, prompting them to 'think step by step' or 'explain your reasoning' is unnecessary"* and notes such phrasing *"may not enhance performance (and can sometimes hinder it)."* Independently, Li et al. observed consistent instruction-following degradation across `15` models on `IFEval` and `ComplexBench` when CoT prompting diverted attention from constraints.
+  - `LUNA-PG2` in [stats_recomputed.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/stats_recomputed.md).
+- **Models Tested**: OpenAI reasoning models (vendor docs); `GPT 6 Luna` (`LUNA-PG2`, `high`); `15` models across `IFEval` and `ComplexBench` (Li et al.).
+- **Verified Guidance & Empirical Check (`LUNA-PG2`)**:
+  OpenAI states: *"Avoid chain-of-thought prompts: Since these models perform reasoning internally, prompting them to 'think step by step' or 'explain your reasoning' is unnecessary"* and notes such phrasing *"may not enhance performance (and can sometimes hinder it)."* Independently, Li et al. observed consistent instruction-following degradation across `15` models on `IFEval` and `ComplexBench` when CoT prompting diverted attention from constraints. In powered non-ceiling **`LUNA-PG2`** (`8` hard math + `8` constrained prompts × `5`, `high`), `direct_goal` (`0.904`, `strict = 57/80`) vs `explicit_cot_hidden` (`0.931`, `60/80`, `p = 0.3992`) and `explicit_cot_visible` (`0.894`, `52/80`, `p = 0.8109`; constrained strict `16/40` vs `21/40`) confirmed zero statistically significant lift from explicit CoT directives.
 - **Authoring Directive**:
   - For reasoning models, omit explicit `"think step by step"` instructions; provide clear goals and constraints instead.
 
@@ -130,14 +131,15 @@ This guide documents rules for authoring LLM system instructions, tagged by evid
 ---
 
 ### R-SYS-09: Few-Shot Discipline & Instruction Alignment
-- **Evidence Tier**: **T5 (Literature — Learned Behavior)** *(tested on earlier models; transfer not re-measured)* + **T3 (OpenAI Reasoning Guide)**
+- **Evidence Tier**: **T5 (Literature — Learned Behavior)** + **T3 (OpenAI Reasoning Guide)** *(token efficiency & conflict-tax confirmed in `LUNA-PG3` on `GPT 6 Luna`)*
 - **Primary Citations**:
   - Tang, Tuncel, Koerner, & Runkler (Sep 2025), *The Few-shot Dilemma: Over-prompting Large Language Models*, [arXiv:2509.13196](https://arxiv.org/abs/2509.13196).
   - Camassa & Shiller (2026-05-19), *Do as I Say, Not as I Do: Instruction-Induction Conflict in LLMs*, [arXiv:2605.20382](https://arxiv.org/abs/2605.20382).
   - OpenAI Reasoning Best Practices (retrieved 2026-11-22), [developers.openai.com](https://developers.openai.com/api/docs/guides/reasoning-best-practices).
-- **Models Tested**: GPT-4o, GPT-3.5-turbo, DeepSeek-V3, Gemma-3, LLaMA-3.1/3.2, Mistral (Tang et al.); `13` models across `16` instructions (Camassa & Shiller).
-- **Verified Finding**:
-  Adding excessive domain examples degrades accuracy in some LLMs (Tang et al.). When hardcoded examples conflict with written rules, instruction-following drops sharply (`27%` fixed-output / `43%` task-based grand mean across 13 models, Camassa & Shiller). OpenAI advises: *"Try zero shot first, then few shot if needed... ensure that the examples align very closely with your prompt instructions."*
+  - `LUNA-PG3` in [stats_recomputed.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/stats_recomputed.md).
+- **Models Tested**: `GPT 6 Luna` (`LUNA-PG3`, `high`); GPT-4o, GPT-3.5-turbo, DeepSeek-V3, Gemma-3, LLaMA-3.1/3.2, Mistral (Tang et al.); `13` models across `16` instructions (Camassa & Shiller).
+- **Verified Finding & `LUNA-PG3` Observation**:
+  Adding excessive domain examples degrades accuracy in some LLMs (Tang et al.). When hardcoded examples conflict with written rules, instruction-following drops sharply (`27%` fixed-output / `43%` task-based grand mean across 13 models, Camassa & Shiller). OpenAI advises: *"Try zero shot first, then few shot if needed... ensure that the examples align very closely with your prompt instructions."* In **`LUNA-PG3`** (`16 × 5 = 240` calls, `high`), `zero_shot` (`80/80`, `201.4` ptok, `37.1` rtok) matched `aligned_3shot` (`79/80`, `p = 0.3332`, `+255` net extra tokens despite `-13.7` rtok) and `conflicting_3shot` (`80/80`, `0/80` mimic — system rules overrode bad shots), while fighting conflicting shots inflated **`rtok` `+86%` vs aligned (`43.6` vs `23.4`, `t(15) = 16.97, p = 3.361e-11`; `+6.5` vs `zero_shot`, `p = 0.0001`)**.
 - **Authoring Directive**:
   - Start zero-shot on reasoning models; add only minimal, clean examples when output format or edge-case disambiguation requires them, ensuring zero rule contradictions.
 

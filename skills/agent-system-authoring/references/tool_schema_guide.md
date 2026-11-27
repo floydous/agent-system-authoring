@@ -99,14 +99,15 @@ This guide documents rules for designing tool and function schemas (JSON Schema,
 ---
 
 ### R-TOOL-08: Compact Tool Catalogs & Dynamic Tool Retrieval
-- **Evidence Tier**: **T4 (Literature — Mechanism: context bloat)** + **T5 (`LongFuncEval`)** + **T3 (Anthropic consolidation)**
+- **Evidence Tier**: **T4 (Literature — Mechanism: context bloat, confirmed in `LUNA-PG1`)** + **T5 (`LongFuncEval`)** + **T3 (Anthropic consolidation)**
 - **Primary Citations**:
+  - `LUNA-PG1` (`5/20/50/100` nested tools, `16 × 5 = 320` calls) in [stats_recomputed.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/stats_recomputed.md).
   - Kate, Pedapati, Basu, Rizk, Chenthamarakshan, Chaudhury, Agarwal, & Abdelaziz (Apr 2025), *LongFuncEval*, [arXiv:2505.10570](https://arxiv.org/abs/2505.10570).
   - Qin, Liang, Ye, et al. (Jul 2023 / ICLR 2024), *ToolLLM*, [arXiv:2307.16789](https://arxiv.org/abs/2307.16789).
   - Anthropic Tool Use (`define-tools`, retrieved 2026-11-22).
-- **Models Tested**: Long-context LLMs (LongFuncEval); `ToolLLaMA` / `APIBench` (ToolLLM).
+- **Models Tested**: `GPT 6 Luna` (`LUNA-PG1`, `effort = "none"`); Long-context LLMs (LongFuncEval); `ToolLLaMA` / `APIBench` (ToolLLM).
 - **Verified Finding**:
-  Each tool schema consumes prompt tokens and competes for selection attention (**T4**). In LongFuncEval (**T5**), scaling tool catalog size caused a `7%` to `85%` performance drop, while longer tool responses caused a `7%` to `91%` drop (`13%` and `40%` drops on long multi-turn chats). ToolLLM introduced neural API retrieval across `16,464` APIs, and Anthropic (**T3**) advises consolidating related actions (`action` parameter) so fewer tools populate context.
+  Each tool schema consumes prompt tokens and competes for selection attention (**T4**). In **`LUNA-PG1`** (`effort = "none"`, `rtok = 0`), `GPT 6 Luna` held **`80/80` (`100.0%`)** exact tool + argument accuracy across `5`, `20`, `50`, and `100` nested tools, while prompt tokens surged **`12.8×` (`374.8 -> 1,029.2 -> 2,445.1 -> 4,797.9`, `+4,423.1` tok/call, `t(15) = 530.09, p = 1.828e-33`)** and latency ticked up `+0.23s` (`p = 0.0530`). In LongFuncEval (**T5**), scaling tool catalog size caused a `7%` to `85%` performance drop, while longer tool responses caused a `7%` to `91%` drop (`13%` and `40%` drops on long multi-turn chats). ToolLLM introduced neural API retrieval across `16,464` APIs, and Anthropic (**T3**) advises consolidating related actions (`action` parameter) so fewer tools populate context.
 - **Schema Directive**:
   - Keep active in-context tool sets minimal via dynamic retrieval or consolidated multi-action tools instead of injecting full enterprise catalogs into every call.
 
@@ -157,12 +158,13 @@ This guide documents rules for designing tool and function schemas (JSON Schema,
 ---
 
 ### R-TOOL-12: Multi-Turn Constraint Re-Anchoring Beyond 50% Context
-- **Evidence Tier**: **T5 (Literature — Learned Behavior)** *(tested on earlier models; transfer not re-measured)*
+- **Evidence Tier**: **T5 (Literature — Learned Behavior)** *(ceiling at `~67.3k` tokens in `LUNA-PG5` on `GPT 6 Luna (high)` with slight `-1.6` `rtok` refresh trim; accuracy protection on older/smaller models remains T5)*
 - **Primary Citations**:
   - Liu et al. (Jul 2023 / TACL 2024), [arXiv:2307.03172](https://arxiv.org/abs/2307.03172).
   - Veseli et al. (Aug 2025 / COLM 2025), [arXiv:2508.07479](https://arxiv.org/abs/2508.07479).
-- **Models Tested**: `GPT-3.5`, `LLaMA-3-8B`, `Gemma-2-9B` (plus `MPT-30B`, `LongChat`, `Claude-1.3`, `Mistral-7B` in Liu et al.).
+  - `LUNA-PG5` in [stats_recomputed.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/stats_recomputed.md).
+- **Models Tested**: `GPT 6 Luna` (`LUNA-PG5`, `~67.3k` ptok, `high`); `GPT-3.5`, `LLaMA-3-8B`, `Gemma-2-9B` (plus `MPT-30B`, `LongChat`, `Claude-1.3`, `Mistral-7B` in Liu et al.).
 - **Verified Finding**:
-  Once conversation history exceeds `50%` of the context window, primacy attention weakens while recency distance-based bias dominates.
+  Once conversation history exceeds `50%` of the context window, primacy attention weakens while recency distance-based bias dominates in literature models. In **`LUNA-PG5`** (`440` docs / `~67.3k` ptok, `high`), both `doc_middle` and `doc_middle_refreshed` held `80/80` (`100.0%`) recall and injection resistance, while refreshing slightly trimmed `rtok` (`26.7 -> 25.0`, `t(15) = -2.55, p = 0.0222`).
 - **Schema Directive**:
   - In long multi-turn agent loops approaching heavy context utilization, re-inject critical tool usage invariants near the active turn before irreversible calls.

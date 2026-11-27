@@ -50,6 +50,6 @@ Follow these directives to author production system prompts, multi-provider tool
 - [references/system_instructions_guide.md](references/system_instructions_guide.md) — System prompt rules (`R-SYS-01`–`10`) & `PC-2` caveats.
 - [references/tool_schema_guide.md](references/tool_schema_guide.md) — Provider wire shapes & schema rules (`R-TOOL-01`–`12`).
 - [references/skill_design_guide.md](references/skill_design_guide.md) — Agent Skills spec (`R-SKILL-01`–`06`) & eval design.
-- [references/evidence_ledger.md](references/evidence_ledger.md) & [references/empirical_results.md](references/empirical_results.md) — Master tier ledger & Phase A–F + `H-08` measurements.
+- [references/evidence_ledger.md](references/evidence_ledger.md) & [references/empirical_results.md](references/empirical_results.md) — Master tier ledger & Phase A–G + `H-08` measurements.
 - [references/debunked_folklore.md](references/debunked_folklore.md) & [references/unverified_hypotheses.md](references/unverified_hypotheses.md) — Refuted claims & open hypotheses.
 - [scripts/verify_skill.py](scripts/verify_skill.py) & [evals/evals.json](evals/evals.json) — Offline validator & Eval Suite v4 definitions.

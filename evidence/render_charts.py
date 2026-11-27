@@ -521,7 +521,7 @@ def render_html(data: dict, theme_name: str) -> str:
 <body>
   <div class="frame">
     <div class="sheet">
-      <h1>Prompt changes that move pass rate. <span class="muted">6,748 runs across 4 models.</span></h1>
+      <h1>Prompt changes that move pass rate. <span class="muted">8,028 runs across 4 models.</span></h1>
 
       <div class="legend">
         <span class="leg-item"><span class="leg-bar-base"></span>Before</span>

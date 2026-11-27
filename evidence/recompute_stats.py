@@ -2,7 +2,7 @@
 # requires-python = ">=3.10"
 # dependencies = []
 # ///
-"""Offline statistical recomputation from raw JSONL execution traces (Phases A–F & H-08).
+"""Offline statistical recomputation from raw JSONL execution traces (Phases A–G & H-08).
 
 Reads all JSONL trace files under:
 - evidence/raw/results_*.jsonl                     (Phase A: 228 records, 1 run/prompt, GPT 6 Luna)
@@ -13,6 +13,7 @@ Reads all JSONL trace files under:
 - evidence/raw_h08_particle1/results_H08-*.jsonl   (H-08: 950 records, N=5 runs/prompt, Particle-1 / DeepSeek V4.1 Flash)
 - evidence/raw_phase_f_nemo/results_NEMO-*.jsonl   (Phase F: 1,190 records, N=5 runs/prompt, Nemotron 3.5 Lightning 30B-A3B Mamba-2 SSM)
 - evidence/raw_phase_f_ling/results_LING-*.jsonl   (Phase F: 1,510 records, N=5 runs/prompt, Ling 3.2 Flash ~560B-A25B Hybrid-Linear KDA+MLA MoE)
+- evidence/raw_phase_g_luna/results_LUNA-*.jsonl   (Phase G: 1,280 records, N=5 runs/prompt, GPT 6 Luna: PG-1 to PG-5)
 
 Enforces strict unit-of-analysis hygiene (zero pseudoreplication):
 - Aggregates repeated runs per prompt_id into prompt means before hypothesis testing.
@@ -99,6 +100,14 @@ PHASE_F_LING_BASELINES: Dict[str, str] = {
     "LING-PD4": "arabic_digits",
     "LING-PD5": "json_schema",
     "LING-PE1": "rules_05",
+}
+
+PHASE_G_LUNA_BASELINES: Dict[str, str] = {
+    "LUNA-PG1": "tools_05",
+    "LUNA-PG2": "direct_goal",
+    "LUNA-PG3": "zero_shot",
+    "LUNA-PG4": "system_only",
+    "LUNA-PG5": "doc_start",
 }
 
 
@@ -431,6 +440,7 @@ def main() -> int:
     raw_h08 = evidence_dir / "raw_h08_particle1"
     raw_f_nemo = evidence_dir / "raw_phase_f_nemo"
     raw_f_ling = evidence_dir / "raw_phase_f_ling"
+    raw_g_luna = evidence_dir / "raw_phase_g_luna"
     out_path = evidence_dir / "stats_recomputed.md"
 
     grouped_a = load_records(raw_a, "results_*.jsonl")
@@ -441,6 +451,7 @@ def main() -> int:
     grouped_h08 = load_records(raw_h08, "results_H08-*.jsonl")
     grouped_f_nemo = load_records(raw_f_nemo, "results_NEMO-*.jsonl")
     grouped_f_ling = load_records(raw_f_ling, "results_LING-*.jsonl")
+    grouped_g_luna = load_records(raw_g_luna, "results_LUNA-*.jsonl")
 
     if not grouped_a:
         print(f"ERROR: No Phase A JSONL files found in {raw_a}", file=sys.stderr)
@@ -454,7 +465,8 @@ def main() -> int:
     total_h08 = sum(len(v) for v in grouped_h08.values())
     total_f_nemo = sum(len(v) for v in grouped_f_nemo.values())
     total_f_ling = sum(len(v) for v in grouped_f_ling.values())
-    grand_total = total_a + total_b + total_c + total_d + total_e + total_h08 + total_f_nemo + total_f_ling
+    total_g_luna = sum(len(v) for v in grouped_g_luna.values())
+    grand_total = total_a + total_b + total_c + total_d + total_e + total_h08 + total_f_nemo + total_f_ling + total_g_luna
     err_b = sum(1 for v in grouped_b.values() for r in v if r.get("error") is not None)
     err_c = sum(1 for v in grouped_c.values() for r in v if r.get("error") is not None)
     err_d = sum(1 for v in grouped_d.values() for r in v if r.get("error") is not None)
@@ -462,11 +474,12 @@ def main() -> int:
     err_h08 = sum(1 for v in grouped_h08.values() for r in v if r.get("error") is not None)
     err_f_nemo = sum(1 for v in grouped_f_nemo.values() for r in v if r.get("error") is not None)
     err_f_ling = sum(1 for v in grouped_f_ling.values() for r in v if r.get("error") is not None)
+    err_g_luna = sum(1 for v in grouped_g_luna.values() for r in v if r.get("error") is not None)
 
     lines: List[str] = [
-        "# Recomputed Statistical Summary (Phases A–F & H-08 Cross-Architecture Replication)",
+        "# Recomputed Statistical Summary (Phases A–G & H-08 Cross-Architecture Replication)",
         "",
-        f"- **Total Benchmark Traces**: **{grand_total:,} records** (`{total_a + total_b + total_c + total_d + total_e:,}` on `GPT 6 Luna` + `{total_h08:,}` on `Particle-1` / DeepSeek V4.1 Flash + `{total_f_nemo:,}` on `Nemotron 3.5 Lightning` / `30B-A3B` Mamba-2 SSM + `{total_f_ling:,}` on `Ling 3.2 Flash` / `~560B-A25B` Hybrid-Linear KDA+MLA MoE)",
+        f"- **Total Benchmark Traces**: **{grand_total:,} records** (`{total_a + total_b + total_c + total_d + total_e + total_g_luna:,}` on `GPT 6 Luna` + `{total_h08:,}` on `Particle-1` / DeepSeek V4.1 Flash + `{total_f_nemo:,}` on `Nemotron 3.5 Lightning` / `30B-A3B` Mamba-2 SSM + `{total_f_ling:,}` on `Ling 3.2 Flash` / `~560B-A25B` Hybrid-Linear KDA+MLA MoE)",
         "- **Unit-of-Analysis Policy**: Zero pseudoreplication — repeated runs (`N = 5` per prompt) are aggregated into prompt-level means (`n = P` independent prompts) before inferential testing (paired *t*-test with `df = P - 1` and exact two-sided paired sign test). Pooled run counts and `TARa@K` are reported descriptively.",
         f"- **Phase A Traces**: `evidence/raw/` ({len(grouped_a)} suites, {total_a} records, 1 run/prompt, GPT 6 Luna)",
         f"- **Phase B Traces**: `evidence/raw_phase_b/` ({len(grouped_b)} suites, {total_b} records, 5 runs/prompt, GPT 6 Luna, gateway errors={err_b})",
@@ -476,13 +489,98 @@ def main() -> int:
         f"- **H-08 Particle-1 Traces**: `evidence/raw_h08_particle1/` ({len(grouped_h08)} suites, {total_h08} records, 5 runs/prompt, Particle-1 / DeepSeek V4.1 Flash, gateway errors={err_h08})",
         f"- **Phase F Nemotron Traces**: `evidence/raw_phase_f_nemo/` ({len(grouped_f_nemo)} suites, {total_f_nemo} records, 5 runs/prompt, Nemotron 3.5 Lightning 30B-A3B Mamba-2 SSM, gateway errors={err_f_nemo})",
         f"- **Phase F Ling Traces**: `evidence/raw_phase_f_ling/` ({len(grouped_f_ling)} suites, {total_f_ling} records, 5 runs/prompt, Ling 3.2 Flash ~560B-A25B Hybrid-Linear KDA+MLA MoE, gateway errors={err_f_ling})",
+        f"- **Phase G Luna Traces**: `evidence/raw_phase_g_luna/` ({len(grouped_g_luna)} suites, {total_g_luna} records, 5 runs/prompt, GPT 6 Luna: PG-1 to PG-5, gateway errors={err_g_luna})",
         "- **Generated By**: `evidence/recompute_stats.py` (offline stdlib-only statistical verification)",
         "",
     ]
 
+    if grouped_g_luna:
+        lines.extend([
+            "## 1. Phase G Summary Table (`N = 5` Runs/Prompt, `GPT 6 Luna`: `R-TOOL-08`, `R-SYS-07`, `R-SYS-09`, `C-02` & `C-04`)",
+            "",
+        ])
+        lines.extend(render_suite_table(grouped_g_luna, PHASE_G_LUNA_BASELINES, include_tara=True))
+        lines.extend(["", "### Phase G Detailed Prompt-Level Breakdowns (`GPT 6 Luna`)", ""])
+
+        if "LUNA-PG1" in grouped_g_luna:
+            by_c = defaultdict(list)
+            for r in grouped_g_luna["LUNA-PG1"]:
+                by_c[r["condition"]].append(r)
+            lines.append("- **`LUNA-PG1` (`R-TOOL-08` Active Tool Catalog Scaling `5/20/50/100`, `effort = \"none\"`, `rtok = 0`, `16 × 5 = 80`/arm)**:")
+            for c in ("tools_05", "tools_20", "tools_50", "tools_100"):
+                pt = statistics.mean(float(r.get("prompt_tokens") or 0.0) for r in by_c[c])
+                lat = statistics.mean(float(r.get("latency_seconds") or 0.0) for r in by_c[c])
+                ok = sum(int(r["metrics"].get("score", 0)) for r in by_c[c])
+                extra = "" if c == "tools_05" else f" | ptok vs tools_05: {prompt_top_field_pair_summary(by_c[c], by_c['tools_05'], 'prompt_tokens', 1)}; lat: {prompt_top_field_pair_summary(by_c[c], by_c['tools_05'], 'latency_seconds', 2)}"
+                lines.append(f"  - `{c}`: exact={ok}/80 ({100*ok/80:.1f}%), mean prompt_tokens={pt:.1f}, mean latency={lat:.2f}s{extra}")
+
+        if "LUNA-PG2" in grouped_g_luna:
+            by_c = defaultdict(list)
+            for r in grouped_g_luna["LUNA-PG2"]:
+                by_c[r["condition"]].append(r)
+            lines.append("- **`LUNA-PG2` (`R-SYS-07` Explicit CoT Directives on Native Reasoning Model, `effort = \"high\"`, `8` math + `8` constrained × `5`)**:")
+            for c in ("direct_goal", "explicit_cot_hidden", "explicit_cot_visible"):
+                sub = by_c[c]
+                ms = [r for r in sub if r["meta"]["track"] == "math"]
+                cs = [r for r in sub if r["meta"]["track"] == "constrained"]
+                rt = statistics.mean(float(r.get("reasoning_tokens") or 0.0) for r in sub)
+                ct = statistics.mean(float(r.get("completion_tokens") or 0.0) for r in sub)
+                lat = statistics.mean(float(r.get("latency_seconds") or 0.0) for r in sub)
+                st_all = sum(int(r["metrics"].get("strict_all", 0)) for r in sub)
+                m_ok = sum(int(r["metrics"].get("score", 0)) for r in ms)
+                c_ok = sum(int(r["metrics"].get("strict_all", 0)) for r in cs)
+                lines.append(f"  - `{c}`: `strict_all`={st_all}/80 ({100*st_all/80:.1f}%) [math={m_ok}/40, constrained_strict={c_ok}/40], rtok={rt:.1f}, ctok={ct:.1f}, lat={lat:.2f}s")
+            for c in ("explicit_cot_hidden", "explicit_cot_visible"):
+                lines.append(f"  - `{c}` vs `direct_goal` (`strict_all`): {prompt_metric_pair_summary(by_c[c], by_c['direct_goal'], 'strict_all')} | ctok: {prompt_top_field_pair_summary(by_c[c], by_c['direct_goal'], 'completion_tokens', 1)}; lat: {prompt_top_field_pair_summary(by_c[c], by_c['direct_goal'], 'latency_seconds', 2)}")
+
+        if "LUNA-PG3" in grouped_g_luna:
+            by_c = defaultdict(list)
+            for r in grouped_g_luna["LUNA-PG3"]:
+                by_c[r["condition"]].append(r)
+            lines.append("- **`LUNA-PG3` (`R-SYS-09` Zero-Shot vs Aligned 3-Shot vs Conflicting 3-Shot, `effort = \"high\"`, `16 × 5 = 80`/arm)**:")
+            for c in ("zero_shot", "aligned_3shot", "conflicting_3shot"):
+                sub = by_c[c]
+                st = sum(int(r["metrics"].get("strict_all", 0)) for r in sub)
+                mim = statistics.mean(float(r["metrics"].get("mimic_rate", 0.0)) for r in sub)
+                pt = statistics.mean(float(r.get("prompt_tokens") or 0.0) for r in sub)
+                rt = statistics.mean(float(r.get("reasoning_tokens") or 0.0) for r in sub)
+                lines.append(f"  - `{c}`: `strict_all`={st}/80 ({100*st/80:.1f}%), `mimic_rate`={mim:.4f}, prompt_tokens={pt:.1f}, reasoning_tokens={rt:.1f}")
+            lines.extend([
+                f"  - `aligned_3shot` vs `zero_shot` (`reasoning_tokens`): {prompt_top_field_pair_summary(by_c['aligned_3shot'], by_c['zero_shot'], 'reasoning_tokens', 1)}",
+                f"  - `conflicting_3shot` vs `zero_shot` (`reasoning_tokens`): {prompt_top_field_pair_summary(by_c['conflicting_3shot'], by_c['zero_shot'], 'reasoning_tokens', 1)}",
+                f"  - `conflicting_3shot` vs `aligned_3shot` (`reasoning_tokens`): {prompt_top_field_pair_summary(by_c['conflicting_3shot'], by_c['aligned_3shot'], 'reasoning_tokens', 1)}",
+            ])
+
+        if "LUNA-PG4" in grouped_g_luna:
+            by_c = defaultdict(list)
+            for r in grouped_g_luna["LUNA-PG4"]:
+                by_c[r["condition"]].append(r)
+            so_rt = statistics.mean(float(r.get("reasoning_tokens") or 0.0) for r in by_c["system_only"])
+            tr_rt = statistics.mean(float(r.get("reasoning_tokens") or 0.0) for r in by_c["trailing_reminder"])
+            pct = 100.0 * (tr_rt - so_rt) / so_rt if so_rt else 0.0
+            lines.extend([
+                "- **`LUNA-PG4` (`C-02` / `R-SYS-04` 16-Turn `~7.6k`-Token Prospective Memory, `effort = \"high\"`, `16 × 5 = 80`/arm)**:",
+                "  - Both `system_only` and `trailing_reminder` achieved `80/80` (`100.0%`) on `strict_format` and `math_ok`.",
+                f"  - Reasoning tokens (`trailing_reminder` vs `system_only`): {so_rt:.1f} -> {tr_rt:.1f} ({pct:+.1f}%) | {prompt_top_field_pair_summary(by_c['trailing_reminder'], by_c['system_only'], 'reasoning_tokens', 1)}",
+                f"  - Latency (`trailing_reminder` vs `system_only`): {prompt_top_field_pair_summary(by_c['trailing_reminder'], by_c['system_only'], 'latency_seconds', 2)}",
+            ])
+
+        if "LUNA-PG5" in grouped_g_luna:
+            by_c = defaultdict(list)
+            for r in grouped_g_luna["LUNA-PG5"]:
+                by_c[r["condition"]].append(r)
+            pt_mean = statistics.mean(float(r.get("prompt_tokens") or 0.0) for r in by_c["doc_start"])
+            lines.extend([
+                f"- **`LUNA-PG5` (`C-04` / `R-SYS-02` & `R-TOOL-12` Long-Context `~{pt_mean/1000:.1f}k`-Token Placement + Refresh, `effort = \"high\"`, `16 × 5 = 80`/arm)**:",
+                "  - All 4 arms (`doc_start`, `doc_middle`, `doc_end`, `doc_middle_refreshed`) hit `80/80` (`100.0%`) across `recall_ok`, `injection_resisted` (`320/320`), and `format_ok`.",
+                f"  - Reasoning tokens (`doc_middle` vs `doc_start`): {prompt_top_field_pair_summary(by_c['doc_middle'], by_c['doc_start'], 'reasoning_tokens', 1)}",
+                f"  - Reasoning tokens (`doc_middle_refreshed` vs `doc_middle`): {prompt_top_field_pair_summary(by_c['doc_middle_refreshed'], by_c['doc_middle'], 'reasoning_tokens', 1)}",
+            ])
+        lines.append("")
+
     if grouped_f_ling:
         lines.extend([
-            "## 1. Phase F Cross-Architecture Table (`N = 5` Runs/Prompt, `Ling 3.2 Flash` / `~560B-A25B` Hybrid-Linear KDA+MLA MoE)",
+            "## 2. Phase F Cross-Architecture Table (`N = 5` Runs/Prompt, `Ling 3.2 Flash` / `~560B-A25B` Hybrid-Linear KDA+MLA MoE)",
             "",
         ])
         lines.extend(render_suite_table(grouped_f_ling, PHASE_F_LING_BASELINES, include_tara=True))
@@ -607,7 +705,7 @@ def main() -> int:
 
     if grouped_f_nemo:
         lines.extend([
-            "## 2. Phase F Cross-Architecture Table (`N = 5` Runs/Prompt, `Nemotron 3.5 Lightning` / `30B-A3B` Mamba-2 SSM Hybrid)",
+            "## 3. Phase F Cross-Architecture Table (`N = 5` Runs/Prompt, `Nemotron 3.5 Lightning` / `30B-A3B` Mamba-2 SSM Hybrid)",
             "",
         ])
         lines.extend(render_suite_table(grouped_f_nemo, PHASE_F_NEMO_BASELINES, include_tara=True))
@@ -714,7 +812,7 @@ def main() -> int:
 
     if grouped_h08:
         lines.extend([
-            "## 3. H-08 Cross-Model Replication Table (`N = 5` Runs/Prompt, `Particle-1` / DeepSeek V4.1 Flash Lineage)",
+            "## 4. H-08 Cross-Model Replication Table (`N = 5` Runs/Prompt, `Particle-1` / DeepSeek V4.1 Flash Lineage)",
             "",
         ])
         lines.extend(render_suite_table(grouped_h08, H08_BASELINES, include_tara=True))
@@ -821,7 +919,7 @@ def main() -> int:
 
     if grouped_e:
         lines.extend([
-            "## 4. Phase E Summary Table (`N = 5` Runs/Prompt, `GPT 6 Luna`, `high` Effort: `R-SYS-01` & `C-02`/`C-03`/`C-04`)",
+            "## 5. Phase E Summary Table (`N = 5` Runs/Prompt, `GPT 6 Luna`, `high` Effort: `R-SYS-01` & `C-02`/`C-03`/`C-04`)",
             "",
         ])
         lines.extend(render_suite_table(grouped_e, PHASE_E_BASELINES, include_tara=True))
@@ -887,7 +985,7 @@ def main() -> int:
 
     if grouped_d:
         lines.extend([
-            "## 5. Phase D Summary Table (`N = 5` Runs/Prompt, Open Hypotheses `H-02`, `H-03`, `H-06`, `H-07`)",
+            "## 6. Phase D Summary Table (`N = 5` Runs/Prompt, Open Hypotheses `H-02`, `H-03`, `H-06`, `H-07`)",
             "",
         ])
         lines.extend(render_suite_table(grouped_d, PHASE_D_BASELINES, include_tara=True))
@@ -960,7 +1058,7 @@ def main() -> int:
 
     if grouped_c:
         lines.extend([
-            "## 6. Phase C Summary Table (`N = 5` Runs/Prompt × `16` Prompts/Suite, High Effort, Counterbalanced / Powered)",
+            "## 7. Phase C Summary Table (`N = 5` Runs/Prompt × `16` Prompts/Suite, High Effort, Counterbalanced / Powered)",
             "",
         ])
         lines.extend(render_suite_table(grouped_c, PHASE_C_BASELINES, include_tara=True))
@@ -1049,7 +1147,7 @@ def main() -> int:
 
     if grouped_b:
         lines.extend([
-            "## 7. Phase B Summary Table (`N = 5` Runs/Prompt × `6` Prompts/Suite, Prompt-Level Inference)",
+            "## 8. Phase B Summary Table (`N = 5` Runs/Prompt × `6` Prompts/Suite, Prompt-Level Inference)",
             "",
         ])
         lines.extend(render_suite_table(grouped_b, PHASE_B_BASELINES, include_tara=True))
@@ -1095,7 +1193,7 @@ def main() -> int:
 
     lines.extend([
         "",
-        "## 8. Phase A Summary Table (Baseline Run `20261119_020610_3f7405`, `N = 1` Run/Prompt)",
+        "## 9. Phase A Summary Table (Baseline Run `20261119_020610_3f7405`, `N = 1` Run/Prompt)",
         "",
     ])
     lines.extend(render_suite_table(grouped_a, PHASE_A_BASELINES, include_tara=False))

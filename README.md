@@ -21,10 +21,10 @@
 
 <table align="center">
   <tr>
-    <td align="center" width="190"><h3>6,748</h3><b>Benchmark runs</b><br><sub>4 model families, 3 architectures</sub></td>
+    <td align="center" width="190"><h3>8,028</h3><b>Benchmark runs</b><br><sub>4 model families, 3 architectures</sub></td>
     <td align="center" width="190"><h3>28</h3><b>Tagged rules</b><br><sub>every rule linked to its proof</sub></td>
     <td align="center" width="190"><h3>3</h3><b>API providers</b><br><sub>OpenAI, Anthropic, Gemini</sub></td>
-    <td align="center" width="190"><h3>219.3 KB</h3><b>Skill install</b><br><sub>55-line SKILL.md, 14 files</sub></td>
+    <td align="center" width="190"><h3>232.5 KB</h3><b>Skill install</b><br><sub>55-line SKILL.md, 14 files</sub></td>
   </tr>
 </table>
 
@@ -95,7 +95,7 @@ This skill gives coding agents a short, tested playbook for authoring system pro
 
 ## What held up
 
-We ran `6,748` benchmark calls across four model families (`GPT 6 Luna`, `Particle-1`, `Nemotron 3.5 Lightning` Mamba-2 SSM, and `Ling 3.2 Flash` Hybrid-Linear MoE) plus `490` skill-eval calls. Repeated runs (`N = 5` per prompt) are averaged at the prompt level before statistical testing to avoid inflated sample counts.
+We ran `8,028` benchmark calls across four model families (`GPT 6 Luna`, `Particle-1`, `Nemotron 3.5 Lightning` Mamba-2 SSM, and `Ling 3.2 Flash` Hybrid-Linear MoE) plus `490` skill-eval calls. Repeated runs (`N = 5` per prompt) are averaged at the prompt level before statistical testing to avoid inflated sample counts.
 
 <p align="center">
   <picture>
@@ -105,7 +105,7 @@ We ran `6,748` benchmark calls across four model families (`GPT 6 Luna`, `Partic
   </picture>
 </p>
 
-**Key rules to apply:** spell out exact parameter formats and units (cuts thinking tokens across all 4 families too), keep tool descriptions factual and neutral, name banned words explicitly, break large rule sets into compact phases, put `rationale` first only when pre-output thinking is off, use TypeScript interfaces inside prose prompts (keep JSON Schema for tool APIs), and drop honorary expert personas and `###` tool headers.
+**Key rules to apply:** spell out exact parameter formats and units (cuts thinking tokens across all 4 families too), keep tool descriptions factual and neutral, prune bloated tool catalogs, name banned words explicitly, break large rule sets into compact phases, put `rationale` first only when pre-output thinking is off, use TypeScript interfaces inside prose prompts (keep JSON Schema for tool APIs), and drop CoT directives, superfluous few-shot examples, honorary expert personas, and `###` tool headers.
 
 **Skill evals:** `1.000` precision and recall on the 9-skill trigger suite (`160` calls), `50/50` solo-skill precision, and `39/40` vs `38/40` on objective authoring probes ([evals_results.md](evidence/evals_results.md)).
 
@@ -129,7 +129,7 @@ Every rule in [evidence_ledger.md](skills/agent-system-authoring/references/evid
 </details>
 
 <details>
-<summary><strong>Full benchmark archive (6,748 benchmark calls + 490 eval calls)</strong></summary>
+<summary><strong>Full benchmark archive (8,028 benchmark calls + 490 eval calls)</strong></summary>
 
 | Suite | Model | Calls | Focus | Full report |
 | :--- | :--- | :---: | :--- | :--- |
@@ -141,9 +141,10 @@ Every rule in [evidence_ledger.md](skills/agent-system-authoring/references/evid
 | **`H-08` Replication** | `Particle-1` (DeepSeek V4.1 Flash) | 950 | Cross-model replication of `PC-1`, `PC-2`, `PD-1`, `PD-4`, `PD-5` | [stats_recomputed.md](evidence/stats_recomputed.md) |
 | **Phase F Cross-Arch (Nemotron)** | `Nemotron 3.5 Lightning` (Mamba-2 SSM) | 1,190 | Cross-architecture replication of `PB-6`, `PC-1`, `PC-2`, `PD-1`, `PD-4`, `PE-2` | [stats_recomputed.md](evidence/stats_recomputed.md) |
 | **Phase F Cross-Arch (Ling)** | `Ling 3.2 Flash` (Hybrid-Linear MoE) | 1,510 | Cross-architecture replication of `PB-6`, `PE-1`, `PC-1`, `PC-2`, `PD-1`, `PD-4`, `PD-5` | [stats_recomputed.md](evidence/stats_recomputed.md) |
+| **Phase G Stress & Untouched Rules** | `GPT 6 Luna` | 1,280 | Tool catalog scaling (`PG-1`), CoT on reasoning (`PG-2`), conflicting few-shots (`PG-3`), 16-turn memory (`PG-4`), 67k context (`PG-5`) | [stats_recomputed.md](evidence/stats_recomputed.md) |
 | **Eval Suite v4** | `GPT 6 Luna` | 490 | 9-skill triggering, solo precision, objective probes, dual-order judge | [evals_results.md](evidence/evals_results.md) |
 
-All `6,520` Phase B to F and `H-08` runs and all `490` Eval v4 runs completed with `0` gateway errors. Narrative synthesis lives in [empirical_results.md](skills/agent-system-authoring/references/empirical_results.md).
+All `7,800` Phase B to G and `H-08` runs and all `490` Eval v4 runs completed with `0` gateway errors. Narrative synthesis lives in [empirical_results.md](skills/agent-system-authoring/references/empirical_results.md).
 
 </details>
 
