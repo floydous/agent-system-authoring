@@ -10,7 +10,7 @@ metadata:
 # Agent System Authoring
 
 ## Overview
-Follow these directives to author production system prompts, multi-provider tool definitions, and portable Agent Skills (`T1` Verified Spec, `T2` Measured Empirically across multiple model architectures, `T3` Vendor Guidance, `T4` Mechanism, `T5` Pre-2026 Literature, `Methodology`, `Project convention`). Tested model scope, statistical tables, and limitations live in [references/evidence_ledger.md](references/evidence_ledger.md) and [references/empirical_results.md](references/empirical_results.md).
+Follow these directives to author production system prompts, multi-provider tool definitions, and portable Agent Skills (`T1` Verified Spec, `T2` Measured Empirically across multiple model architectures, `T3` Vendor Guidance, `T4` Mechanism, `T5` Pre-2026 Literature, `Methodology`, `Project convention`). Full proof, tested model scope, and statistical tables live in [evidence/evidence_ledger.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/evidence_ledger.md) and [evidence/empirical_results.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/empirical_results.md).
 
 ## Authoring Workflow
 Route directly to **Step 1** (system prompts), **Step 2** (tool schemas), **Step 3** (Agent Skills), or **Audit** (read existing artifacts and check [references/debunked_folklore.md](references/debunked_folklore.md) first). If target **provider(s)** (`OpenAI`/`Anthropic`/`Gemini`), **`strict: true`** support, or **reasoning vs. zero-reasoning mode** are not evident from workspace files, confirm them before authoring (`R-TOOL-10`/`R-TOOL-11` wire shapes are mutually incompatible).
@@ -48,9 +48,8 @@ Route directly to **Step 1** (system prompts), **Step 2** (tool schemas), **Step
 3. **Audit & verify (`R-SYS-10`)**: Check [references/debunked_folklore.md](references/debunked_folklore.md), run `python -B <this-skill-dir>/scripts/verify_skill.py --generic <target-skill-dir>` until exit code `0` (omit `--generic` only for `agent-system-authoring` itself), and test over `N >= 5` repeats aggregated to prompt means before paired *t* / exact sign tests.
 
 ## References
-- [references/system_instructions_guide.md](references/system_instructions_guide.md) — System prompt rules (`R-SYS-01`–`10`) & `PC-2` caveats.
-- [references/tool_schema_guide.md](references/tool_schema_guide.md) — Provider wire shapes & schema rules (`R-TOOL-01`–`12`).
-- [references/skill_design_guide.md](references/skill_design_guide.md) — Agent Skills spec (`R-SKILL-01`–`06`) & eval design.
-- [references/evidence_ledger.md](references/evidence_ledger.md) & [references/empirical_results.md](references/empirical_results.md) — Master tier ledger & Phase A–G + `H-08` measurements.
-- [references/debunked_folklore.md](references/debunked_folklore.md) & [references/unverified_hypotheses.md](references/unverified_hypotheses.md) — Refuted claims & open hypotheses.
+- [references/system_instructions_guide.md](references/system_instructions_guide.md) — System prompt directives (`R-SYS-01`–`10`) & concrete examples.
+- [references/tool_schema_guide.md](references/tool_schema_guide.md) — Exact provider wire shapes, keyword matrix & tool directives (`R-TOOL-01`–`12`).
+- [references/skill_design_guide.md](references/skill_design_guide.md) — Agent Skills spec (`R-SKILL-01`–`06`), operational patterns & eval design.
+- [references/debunked_folklore.md](references/debunked_folklore.md) — Audit checklist of refuted prompting & schema myths.
 - [scripts/verify_skill.py](scripts/verify_skill.py) & [evals/evals.json](evals/evals.json) — Offline validator & Eval Suite v4 definitions.

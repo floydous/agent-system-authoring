@@ -537,8 +537,6 @@ class SkillVerifier:
                 self.log_failure("Reference Linking", f"Expected >= 3 links from SKILL.md to references/, found {len(ref_links)}", skill_md)
 
             skill_linked_files = {Path(t).name for _, t in ref_links}
-            ledger_path = refs_dir / "evidence_ledger.md"
-            ledger_text = ledger_path.read_text(encoding="utf-8") if (not self.generic and ledger_path.exists()) else ""
 
             for ref_file in sorted(refs_dir.rglob("*.md")):
                 if ref_file.parent != refs_dir:
@@ -546,10 +544,7 @@ class SkillVerifier:
                     self.log_failure("Reference Linking", f"Nested reference file exceeds one-level depth under references/: {rel_nested}", ref_file)
                     continue
 
-                if self.generic:
-                    is_linked = ref_file.name in skill_linked_files
-                else:
-                    is_linked = (ref_file.name in skill_linked_files) or (ref_file.name in ledger_text) or (ref_file.name == "evidence_ledger.md")
+                is_linked = ref_file.name in skill_linked_files
                 if not is_linked:
                     self.log_failure("Reference Linking", f"Orphaned reference file not linked anywhere: {ref_file.name}", ref_file)
 
@@ -586,9 +581,11 @@ class SkillVerifier:
         if self.generic:
             return
         err_before = len(self.errors)
-        ledger_path = self.root / "references" / "evidence_ledger.md"
+        repo_ledger = self.root.parent.parent / "evidence" / "evidence_ledger.md"
+        local_ledger = self.root / "references" / "evidence_ledger.md"
+        ledger_path = repo_ledger if repo_ledger.exists() else local_ledger
         if not ledger_path.exists():
-            self.log_failure("Evidence Ledger", "references/evidence_ledger.md missing", ledger_path)
+            self.log_failure("Evidence Ledger", "evidence/evidence_ledger.md missing", ledger_path)
             return
 
         text = ledger_path.read_text(encoding="utf-8")
