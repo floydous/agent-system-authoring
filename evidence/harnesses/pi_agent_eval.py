@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_SKILL_DIR = REPO_ROOT / "skills" / "agent-system-authoring"
 VERIFY_SKILL_SCRIPT = DEFAULT_SKILL_DIR / "scripts" / "verify_skill.py"
 SNAKE_CASE_RE = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")

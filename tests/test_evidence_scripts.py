@@ -11,6 +11,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILL_ROOT = REPO_ROOT / "skills" / "agent-system-authoring"
 sys.path.insert(0, str(REPO_ROOT / "evidence"))
+sys.path.insert(0, str(REPO_ROOT / "evidence" / "harnesses"))
 
 import phase_d_harness as pd  # noqa: E402
 import phase_e_harness as pe  # noqa: E402
@@ -90,7 +91,7 @@ class TestRunEvalsHelpers(unittest.TestCase):
 
 class TestPhaseDIntegrity(unittest.TestCase):
     def test_phase_d_raw_traces_reevaluate_cleanly_with_zero_errors(self) -> None:
-        raw_d = REPO_ROOT / "evidence" / "raw_phase_d"
+        raw_d = REPO_ROOT / "evidence" / "raw" / "phase_d"
         grouped = rs.load_records(raw_d, "results_PD-*.jsonl")
         self.assertEqual(sorted(grouped.keys()), ["PD-1", "PD-2", "PD-3", "PD-4", "PD-5"])
         total = sum(len(v) for v in grouped.values())
@@ -106,7 +107,7 @@ class TestPhaseDIntegrity(unittest.TestCase):
 
 class TestPhaseEAndH08Integrity(unittest.TestCase):
     def test_phase_e_raw_traces_reevaluate_cleanly_with_zero_errors(self) -> None:
-        raw_e = REPO_ROOT / "evidence" / "raw_phase_e"
+        raw_e = REPO_ROOT / "evidence" / "raw" / "phase_e"
         grouped = rs.load_records(raw_e, "results_PE-*.jsonl")
         self.assertEqual(sorted(grouped.keys()), ["PE-1", "PE-2", "PE-3", "PE-4"])
         self.assertEqual(sum(len(v) for v in grouped.values()), 880)
@@ -119,7 +120,7 @@ class TestPhaseEAndH08Integrity(unittest.TestCase):
                 self.assertEqual(re_metrics, r["metrics"], msg=f"Mismatch on {sid} {r['prompt_id']} {r['condition']} it={r['iteration']}")
 
     def test_h08_raw_traces_reevaluate_cleanly_with_zero_errors(self) -> None:
-        raw_h08 = REPO_ROOT / "evidence" / "raw_h08_particle1"
+        raw_h08 = REPO_ROOT / "evidence" / "raw" / "h08_particle1"
         grouped = rs.load_records(raw_h08, "results_H08-*.jsonl")
         self.assertEqual(sorted(grouped.keys()), ["H08-PC1", "H08-PC2", "H08-PD1", "H08-PD4", "H08-PD5"])
         self.assertEqual(sum(len(v) for v in grouped.values()), 950)
@@ -133,7 +134,7 @@ class TestPhaseEAndH08Integrity(unittest.TestCase):
 
     def test_pe1_fifty_rules_are_mutually_satisfiable(self) -> None:
         self.assertEqual(len(pe.PE1_RuleDensityScaling.RULES), 50)
-        pe1_path = REPO_ROOT / "evidence" / "raw_phase_e" / "results_PE-1.jsonl"
+        pe1_path = REPO_ROOT / "evidence" / "raw" / "phase_e" / "results_PE-1.jsonl"
         recs = [json.loads(ln) for ln in pe1_path.read_text(encoding="utf-8").splitlines() if ln.strip()]
         r50 = [r for r in recs if r["condition"] == "rules_50"]
         perfect_50 = [
@@ -151,7 +152,7 @@ class TestPhaseEAndH08Integrity(unittest.TestCase):
 
 class TestPhaseFNemoIntegrity(unittest.TestCase):
     def test_phase_f_nemo_raw_traces_reevaluate_cleanly_with_zero_errors(self) -> None:
-        raw_nemo = REPO_ROOT / "evidence" / "raw_phase_f_nemo"
+        raw_nemo = REPO_ROOT / "evidence" / "raw" / "phase_f_nemo"
         grouped = rs.load_records(raw_nemo, "results_NEMO-*.jsonl")
         self.assertEqual(
             sorted(grouped.keys()),
@@ -183,7 +184,7 @@ class TestPhaseFNemoIntegrity(unittest.TestCase):
 
 class TestPhaseFLingIntegrity(unittest.TestCase):
     def test_phase_f_ling_raw_traces_reevaluate_cleanly_with_zero_errors(self) -> None:
-        raw_ling = REPO_ROOT / "evidence" / "raw_phase_f_ling"
+        raw_ling = REPO_ROOT / "evidence" / "raw" / "phase_f_ling"
         grouped = rs.load_records(raw_ling, "results_LING-*.jsonl")
         self.assertEqual(
             sorted(grouped.keys()),
@@ -325,7 +326,7 @@ class TestPhaseGHarnessDesign(unittest.TestCase):
         self.assertEqual(pg.PG5_LongContextPlacementAndRefresh.evaluate({"meta": meta}, hijacked, [])["injection_resisted"], 0.0)
 
     def test_phase_g_luna_raw_traces_reevaluate_cleanly_with_zero_errors(self) -> None:
-        raw_g = REPO_ROOT / "evidence" / "raw_phase_g_luna"
+        raw_g = REPO_ROOT / "evidence" / "raw" / "phase_g_luna"
         grouped = rs.load_records(raw_g, "results_LUNA-*.jsonl")
         self.assertEqual(
             sorted(grouped.keys()),
@@ -398,7 +399,7 @@ class TestPiAgentEvalIntegrity(unittest.TestCase):
         self.assertTrue(tt["skill_read"])
 
     def test_pi_raw_traces_integrity_and_zero_leaks(self) -> None:
-        pi_dir = REPO_ROOT / "evidence" / "raw_pi_agent_eval"
+        pi_dir = REPO_ROOT / "evidence" / "raw" / "pi_agent_eval"
         main_p = pi_dir / "results_pi_luna_n5.jsonl"
         ab_p = pi_dir / "results_pi_ab_step3_fix.jsonl"
         main_recs = [json.loads(ln) for ln in main_p.read_text(encoding="utf-8").splitlines() if ln.strip()]

@@ -1346,9 +1346,10 @@ def main() -> int:
 
     if args.out_dir:
         out_dir = Path(args.out_dir).resolve()
+    elif args.preflight:
+        out_dir = Path(__file__).resolve().parent.parent / f"preflight_phase_g_{prefix.lower()}"
     else:
-        sub = f"preflight_phase_g_{prefix.lower()}" if args.preflight else f"raw_phase_g_{prefix.lower()}"
-        out_dir = Path(__file__).resolve().parent / sub
+        out_dir = Path(__file__).resolve().parent.parent / "raw" / f"phase_g_{prefix.lower()}"
     out_dir.mkdir(parents=True, exist_ok=True)
     run_id = datetime.now(timezone.utc).strftime(f"%Y%m%d_%H%M%S_{prefix.lower()}_pg")
 

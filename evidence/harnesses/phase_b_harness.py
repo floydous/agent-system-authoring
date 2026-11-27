@@ -751,7 +751,7 @@ def main() -> int:
         return 1
 
     cfg = RunConfig(gateway_url=gw, api_key=key, model=args.model, iterations=args.iterations, concurrency=args.concurrency)
-    out_dir = Path(__file__).resolve().parent / "raw_phase_b"
+    out_dir = Path(__file__).resolve().parent.parent / "raw" / "phase_b"
     out_dir.mkdir(parents=True, exist_ok=True)
     run_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_phaseB")
 

@@ -859,7 +859,7 @@ def main() -> int:
         reasoning_effort=args.effort,
         limit_prompts=args.limit_prompts,
     )
-    out_dir = Path(args.out_dir).resolve() if args.out_dir else (Path(__file__).resolve().parent / "raw_phase_e")
+    out_dir = Path(args.out_dir).resolve() if args.out_dir else (Path(__file__).resolve().parent.parent / "raw" / "phase_e")
     out_dir.mkdir(parents=True, exist_ok=True)
     run_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_phase_e")
 

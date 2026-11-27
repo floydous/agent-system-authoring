@@ -21,7 +21,7 @@ Unit-of-analysis hygiene: All hypothesis tests operate strictly on prompt/task-l
 means (never pooled repeated iterations). Each JSONL record stores model, sanitized
 request_payload (zero URLs/auth), reasoning_tokens, and total_tokens for provenance.
 
-Writes traces to evidence/raw_evals/results_evals_v4.jsonl and renders
+Writes traces to evidence/raw/evals_v4/results_evals_v4.jsonl and renders
 evidence/evals_results.md (supporting --rescore-only and --check for CI).
 """
 
@@ -888,7 +888,7 @@ def render_report(root: Path, out_jsonl: Path, iterations: int, model_label: Opt
         f"- **Iterations**: `N = {iterations}` runs per prompt",
         "- **Unit-of-Analysis Hygiene**: All hypothesis tests operate strictly on prompt/task-level means (`df = num_tasks - 1`).",
         "- **Context Disclosure**: Part B `with_skill` runs simulate progressive disclosure by supplying `SKILL.md` plus the single task-matched reference guide and default starter template.",
-        f"- **Raw Traces**: `evidence/raw_evals/results_evals_v4.jsonl` (`{len(records)}` records including `model`, sanitized `request_payload`, `reasoning_tokens`, and `total_tokens`)",
+        f"- **Raw Traces**: `evidence/raw/evals_v4/results_evals_v4.jsonl` (`{len(records)}` records including `model`, sanitized `request_payload`, `reasoning_tokens`, and `total_tokens`)",
         "",
         "## 1. Hard Triggering Accuracy (9-Skill Registry & Solo-Skill Stress Test, Reason-First Routing)",
         "",
@@ -1070,7 +1070,7 @@ def main() -> int:
 
     root = Path(__file__).resolve().parent.parent
     skill_root = root / "skills" / "agent-system-authoring"
-    out_dir = root / "evidence" / "raw_evals"
+    out_dir = root / "evidence" / "raw" / "evals_v4"
     out_jsonl = out_dir / "results_evals_v4.jsonl"
     report_path = root / "evidence" / "evals_results.md"
 

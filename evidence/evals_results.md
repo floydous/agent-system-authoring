@@ -4,7 +4,7 @@
 - **Iterations**: `N = 5` runs per prompt
 - **Unit-of-Analysis Hygiene**: All hypothesis tests operate strictly on prompt/task-level means (`df = num_tasks - 1`).
 - **Context Disclosure**: Part B `with_skill` runs simulate progressive disclosure by supplying `SKILL.md` plus the single task-matched reference guide and default starter template.
-- **Raw Traces**: `evidence/raw_evals/results_evals_v4.jsonl` (`490` records including `model`, sanitized `request_payload`, `reasoning_tokens`, and `total_tokens`)
+- **Raw Traces**: `evidence/raw/evals_v4/results_evals_v4.jsonl` (`490` records including `model`, sanitized `request_payload`, `reasoning_tokens`, and `total_tokens`)
 
 ## 1. Hard Triggering Accuracy (9-Skill Registry & Solo-Skill Stress Test, Reason-First Routing)
 

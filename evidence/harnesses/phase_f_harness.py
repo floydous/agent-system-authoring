@@ -491,7 +491,7 @@ def main() -> int:
         concurrency=args.concurrency,
         limit_prompts=args.limit_prompts,
     )
-    default_dir = Path(__file__).resolve().parent / f"raw_phase_f_{args.prefix.lower()}"
+    default_dir = Path(__file__).resolve().parent.parent / "raw" / f"phase_f_{args.prefix.lower()}"
     out_dir = Path(args.out_dir).resolve() if args.out_dir else default_dir
     out_dir.mkdir(parents=True, exist_ok=True)
     run_id = datetime.now(timezone.utc).strftime(f"%Y%m%d_%H%M%S_{args.prefix.lower()}")

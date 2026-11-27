@@ -422,7 +422,7 @@ def main() -> int:
         concurrency=args.concurrency,
         reasoning_effort=args.effort,
     )
-    out_dir = Path(__file__).resolve().parent / "raw_phase_c"
+    out_dir = Path(__file__).resolve().parent.parent / "raw" / "phase_c"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     targets = [SUITES[args.suite]] if args.suite != "all" else [SUITES["PC-1"], SUITES["PC-2"]]

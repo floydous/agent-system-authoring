@@ -821,7 +821,7 @@ class SkillVerifier:
         if not self.generic:
             repo_evidence = self.root.parent.parent / "evidence"
             if repo_evidence.exists():
-                script_targets.extend(sorted(repo_evidence.glob("*.py")))
+                script_targets.extend(sorted(repo_evidence.rglob("*.py")))
 
         if not script_targets:
             if self.generic:

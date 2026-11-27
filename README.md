@@ -24,7 +24,7 @@
     <td align="center" width="190"><h3>8,028</h3><b>Benchmark runs</b><br><sub>4 model families, 3 architectures</sub></td>
     <td align="center" width="190"><h3>28</h3><b>Tagged rules</b><br><sub>every rule linked to its proof</sub></td>
     <td align="center" width="190"><h3>3</h3><b>API providers</b><br><sub>OpenAI, Anthropic, Gemini</sub></td>
-    <td align="center" width="190"><h3>241.8 KB</h3><b>Skill install</b><br><sub>56-line SKILL.md, 14 files</sub></td>
+    <td align="center" width="190"><h3>242.0 KB</h3><b>Skill install</b><br><sub>56-line SKILL.md, 14 files</sub></td>
   </tr>
 </table>
 

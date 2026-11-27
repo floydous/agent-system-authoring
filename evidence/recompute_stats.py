@@ -5,16 +5,16 @@
 """Offline statistical recomputation from raw JSONL execution traces (Phases A–G & H-08).
 
 Reads all JSONL trace files under:
-- evidence/raw/results_*.jsonl                     (Phase A: 228 records, 1 run/prompt, GPT 6 Luna)
-- evidence/raw_phase_b/results_PB-*.jsonl          (Phase B: 480 records, N=5 runs/prompt, GPT 6 Luna)
-- evidence/raw_phase_c/results_PC-*.jsonl          (Phase C: 480 records, N=5 runs/prompt, GPT 6 Luna)
-- evidence/raw_phase_d/results_PD-*.jsonl          (Phase D: 1,030 records, N=5 runs/prompt, GPT 6 Luna)
-- evidence/raw_phase_e/results_PE-*.jsonl          (Phase E: 880 records, N=5 runs/prompt, GPT 6 Luna high)
-- evidence/raw_h08_particle1/results_H08-*.jsonl   (H-08: 950 records, N=5 runs/prompt, Particle-1 / DeepSeek V4.1 Flash)
-- evidence/raw_phase_f_nemo/results_NEMO-*.jsonl   (Phase F: 1,190 records, N=5 runs/prompt, Nemotron 3.5 Lightning 30B-A3B Mamba-2 SSM)
-- evidence/raw_phase_f_ling/results_LING-*.jsonl   (Phase F: 1,510 records, N=5 runs/prompt, Ling 3.2 Flash ~560B-A25B Hybrid-Linear KDA+MLA MoE)
-- evidence/raw_phase_g_luna/results_LUNA-*.jsonl   (Phase G: 1,280 records, N=5 runs/prompt, GPT 6 Luna: PG-1 to PG-5)
-- evidence/raw_pi_agent_eval/results_pi_*.jsonl    (Pi Real-Agent Multi-Turn Evals: 40 live pi v1.6.0 sessions on GPT 6 Luna)
+- evidence/raw/phase_a/results_*.jsonl             (Phase A: 228 records, 1 run/prompt, GPT 6 Luna)
+- evidence/raw/phase_b/results_PB-*.jsonl          (Phase B: 480 records, N=5 runs/prompt, GPT 6 Luna)
+- evidence/raw/phase_c/results_PC-*.jsonl          (Phase C: 480 records, N=5 runs/prompt, GPT 6 Luna)
+- evidence/raw/phase_d/results_PD-*.jsonl          (Phase D: 1,030 records, N=5 runs/prompt, GPT 6 Luna)
+- evidence/raw/phase_e/results_PE-*.jsonl          (Phase E: 880 records, N=5 runs/prompt, GPT 6 Luna high)
+- evidence/raw/h08_particle1/results_H08-*.jsonl   (H-08: 950 records, N=5 runs/prompt, Particle-1 / DeepSeek V4.1 Flash)
+- evidence/raw/phase_f_nemo/results_NEMO-*.jsonl   (Phase F: 1,190 records, N=5 runs/prompt, Nemotron 3.5 Lightning 30B-A3B Mamba-2 SSM)
+- evidence/raw/phase_f_ling/results_LING-*.jsonl   (Phase F: 1,510 records, N=5 runs/prompt, Ling 3.2 Flash ~560B-A25B Hybrid-Linear KDA+MLA MoE)
+- evidence/raw/phase_g_luna/results_LUNA-*.jsonl   (Phase G: 1,280 records, N=5 runs/prompt, GPT 6 Luna: PG-1 to PG-5)
+- evidence/raw/pi_agent_eval/results_pi_*.jsonl    (Pi Real-Agent Multi-Turn Evals: 40 live pi v1.6.0 sessions on GPT 6 Luna)
 
 Enforces strict unit-of-analysis hygiene (zero pseudoreplication):
 - Aggregates repeated runs per prompt_id into prompt means before hypothesis testing.
@@ -434,16 +434,17 @@ def main() -> int:
     args = parser.parse_args()
 
     evidence_dir = Path(__file__).resolve().parent
-    raw_a = evidence_dir / "raw"
-    raw_b = evidence_dir / "raw_phase_b"
-    raw_c = evidence_dir / "raw_phase_c"
-    raw_d = evidence_dir / "raw_phase_d"
-    raw_e = evidence_dir / "raw_phase_e"
-    raw_h08 = evidence_dir / "raw_h08_particle1"
-    raw_f_nemo = evidence_dir / "raw_phase_f_nemo"
-    raw_f_ling = evidence_dir / "raw_phase_f_ling"
-    raw_g_luna = evidence_dir / "raw_phase_g_luna"
-    raw_pi = evidence_dir / "raw_pi_agent_eval"
+    raw_root = evidence_dir / "raw"
+    raw_a = raw_root / "phase_a"
+    raw_b = raw_root / "phase_b"
+    raw_c = raw_root / "phase_c"
+    raw_d = raw_root / "phase_d"
+    raw_e = raw_root / "phase_e"
+    raw_h08 = raw_root / "h08_particle1"
+    raw_f_nemo = raw_root / "phase_f_nemo"
+    raw_f_ling = raw_root / "phase_f_ling"
+    raw_g_luna = raw_root / "phase_g_luna"
+    raw_pi = raw_root / "pi_agent_eval"
     out_path = evidence_dir / "stats_recomputed.md"
 
     grouped_a = load_records(raw_a, "results_*.jsonl")
@@ -496,16 +497,16 @@ def main() -> int:
         "",
         f"- **Total Benchmark Traces**: **{grand_total:,} records** (`{total_a + total_b + total_c + total_d + total_e + total_g_luna:,}` on `GPT 6 Luna` + `{total_h08:,}` on `Particle-1` / DeepSeek V4.1 Flash + `{total_f_nemo:,}` on `Nemotron 3.5 Lightning` / `30B-A3B` Mamba-2 SSM + `{total_f_ling:,}` on `Ling 3.2 Flash` / `~560B-A25B` Hybrid-Linear KDA+MLA MoE)",
         "- **Unit-of-Analysis Policy**: Zero pseudoreplication — repeated runs (`N = 5` per prompt) are aggregated into prompt-level means (`n = P` independent prompts) before inferential testing (paired *t*-test with `df = P - 1` and exact two-sided paired sign test). Pooled run counts and `TARa@K` are reported descriptively.",
-        f"- **Phase A Traces**: `evidence/raw/` ({len(grouped_a)} suites, {total_a} records, 1 run/prompt, GPT 6 Luna)",
-        f"- **Phase B Traces**: `evidence/raw_phase_b/` ({len(grouped_b)} suites, {total_b} records, 5 runs/prompt, GPT 6 Luna, gateway errors={err_b})",
-        f"- **Phase C Traces**: `evidence/raw_phase_c/` ({len(grouped_c)} suites, {total_c} records, 5 runs/prompt, GPT 6 Luna, gateway errors={err_c})",
-        f"- **Phase D Traces**: `evidence/raw_phase_d/` ({len(grouped_d)} suites, {total_d} records, 5 runs/prompt, GPT 6 Luna, gateway errors={err_d})",
-        f"- **Phase E Traces**: `evidence/raw_phase_e/` ({len(grouped_e)} suites, {total_e} records, 5 runs/prompt, GPT 6 Luna high, gateway errors={err_e})",
-        f"- **H-08 Particle-1 Traces**: `evidence/raw_h08_particle1/` ({len(grouped_h08)} suites, {total_h08} records, 5 runs/prompt, Particle-1 / DeepSeek V4.1 Flash, gateway errors={err_h08})",
-        f"- **Phase F Nemotron Traces**: `evidence/raw_phase_f_nemo/` ({len(grouped_f_nemo)} suites, {total_f_nemo} records, 5 runs/prompt, Nemotron 3.5 Lightning 30B-A3B Mamba-2 SSM, gateway errors={err_f_nemo})",
-        f"- **Phase F Ling Traces**: `evidence/raw_phase_f_ling/` ({len(grouped_f_ling)} suites, {total_f_ling} records, 5 runs/prompt, Ling 3.2 Flash ~560B-A25B Hybrid-Linear KDA+MLA MoE, gateway errors={err_f_ling})",
-        f"- **Phase G Luna Traces**: `evidence/raw_phase_g_luna/` ({len(grouped_g_luna)} suites, {total_g_luna} records, 5 runs/prompt, GPT 6 Luna: PG-1 to PG-5, gateway errors={err_g_luna})",
-        f"- **Pi Real-Agent Multi-Turn Traces**: `evidence/raw_pi_agent_eval/` ({pi_total} live `pi v1.6.0` sessions on GPT 6 Luna, errors={pi_errors}, isolation_verified={pi_iso_ok}/{pi_total})",
+        f"- **Phase A Traces**: `evidence/raw/phase_a/` ({len(grouped_a)} suites, {total_a} records, 1 run/prompt, GPT 6 Luna)",
+        f"- **Phase B Traces**: `evidence/raw/phase_b/` ({len(grouped_b)} suites, {total_b} records, 5 runs/prompt, GPT 6 Luna, gateway errors={err_b})",
+        f"- **Phase C Traces**: `evidence/raw/phase_c/` ({len(grouped_c)} suites, {total_c} records, 5 runs/prompt, GPT 6 Luna, gateway errors={err_c})",
+        f"- **Phase D Traces**: `evidence/raw/phase_d/` ({len(grouped_d)} suites, {total_d} records, 5 runs/prompt, GPT 6 Luna, gateway errors={err_d})",
+        f"- **Phase E Traces**: `evidence/raw/phase_e/` ({len(grouped_e)} suites, {total_e} records, 5 runs/prompt, GPT 6 Luna high, gateway errors={err_e})",
+        f"- **H-08 Particle-1 Traces**: `evidence/raw/h08_particle1/` ({len(grouped_h08)} suites, {total_h08} records, 5 runs/prompt, Particle-1 / DeepSeek V4.1 Flash, gateway errors={err_h08})",
+        f"- **Phase F Nemotron Traces**: `evidence/raw/phase_f_nemo/` ({len(grouped_f_nemo)} suites, {total_f_nemo} records, 5 runs/prompt, Nemotron 3.5 Lightning 30B-A3B Mamba-2 SSM, gateway errors={err_f_nemo})",
+        f"- **Phase F Ling Traces**: `evidence/raw/phase_f_ling/` ({len(grouped_f_ling)} suites, {total_f_ling} records, 5 runs/prompt, Ling 3.2 Flash ~560B-A25B Hybrid-Linear KDA+MLA MoE, gateway errors={err_f_ling})",
+        f"- **Phase G Luna Traces**: `evidence/raw/phase_g_luna/` ({len(grouped_g_luna)} suites, {total_g_luna} records, 5 runs/prompt, GPT 6 Luna: PG-1 to PG-5, gateway errors={err_g_luna})",
+        f"- **Pi Real-Agent Multi-Turn Traces**: `evidence/raw/pi_agent_eval/` ({pi_total} live `pi v1.6.0` sessions on GPT 6 Luna, errors={pi_errors}, isolation_verified={pi_iso_ok}/{pi_total})",
         "- **Generated By**: `evidence/recompute_stats.py` (offline stdlib-only statistical verification)",
         "",
     ]
@@ -1268,7 +1269,7 @@ def main() -> int:
             "",
             "## 10. Real-Agent Multi-Turn Skill Evaluation (`pi v1.6.0`, `GPT 6 Luna`, `40` Isolated Sessions)",
             "",
-            "Executed headlessly via `evidence/pi_agent_eval.py` (`pi -p --mode json --no-session -ne -nc --no-mcp -np -na -ns`, `--thinking high`, `--tools read,edit,write,bash`) with deterministic external workspace graders (zero LLM judges).",
+            "Executed headlessly via `evidence/harnesses/pi_agent_eval.py` (`pi -p --mode json --no-session -ne -nc --no-mcp -np -na -ns`, `--thinking high`, `--tools read,edit,write,bash`) with deterministic external workspace graders (zero LLM judges).",
             "",
         ])
         if pi_main_recs:

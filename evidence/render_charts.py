@@ -74,13 +74,13 @@ def _fmt_range(lo: float, hi: float) -> str:
 def collect_verified_metrics() -> dict:
     """Compute exact min-max cross-model ranges directly from raw JSONL traces."""
     p = {
-        "ling": EVIDENCE_DIR / "raw_phase_f_ling",
-        "nemo": EVIDENCE_DIR / "raw_phase_f_nemo",
-        "h08": EVIDENCE_DIR / "raw_h08_particle1",
-        "pe": EVIDENCE_DIR / "raw_phase_e",
-        "pd": EVIDENCE_DIR / "raw_phase_d",
-        "pc": EVIDENCE_DIR / "raw_phase_c",
-        "pb": EVIDENCE_DIR / "raw_phase_b",
+        "ling": EVIDENCE_DIR / "raw" / "phase_f_ling",
+        "nemo": EVIDENCE_DIR / "raw" / "phase_f_nemo",
+        "h08": EVIDENCE_DIR / "raw" / "h08_particle1",
+        "pe": EVIDENCE_DIR / "raw" / "phase_e",
+        "pd": EVIDENCE_DIR / "raw" / "phase_d",
+        "pc": EVIDENCE_DIR / "raw" / "phase_c",
+        "pb": EVIDENCE_DIR / "raw" / "phase_b",
     }
 
     def band(pairs: list[tuple[Path, str, str]]) -> tuple[float, float]:
