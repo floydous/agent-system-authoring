@@ -727,8 +727,8 @@ def grade_broken_skill_repair(work: Path) -> Dict[str, Tuple[bool, str]]:
             errors="replace",
             timeout=30,
         )
-        raw_detail = (proc.stdout + proc.stderr).strip()[-240:]
-        clean_detail = raw_detail.replace(str(work), "<work>").replace(str(work).replace("\\", "/"), "<work>")
+        raw_detail = (proc.stdout + proc.stderr).strip()
+        clean_detail = raw_detail.replace(str(work), "<work>").replace(str(work).replace("\\", "/"), "<work>")[-240:]
         checks["verify_skill_generic_exit0"] = (
             proc.returncode == 0,
             "ok" if proc.returncode == 0 else clean_detail,

@@ -14,7 +14,7 @@ Reads all JSONL trace files under:
 - evidence/raw/phase_f_nemo/results_NEMO-*.jsonl   (Phase F: 1,190 records, N=5 runs/prompt, Nemotron 3.5 Lightning 30B-A3B Mamba-2 SSM)
 - evidence/raw/phase_f_ling/results_LING-*.jsonl   (Phase F: 1,510 records, N=5 runs/prompt, Ling 3.2 Flash ~560B-A25B Hybrid-Linear KDA+MLA MoE)
 - evidence/raw/phase_g_luna/results_LUNA-*.jsonl   (Phase G: 1,280 records, N=5 runs/prompt, GPT 6 Luna: PG-1 to PG-5)
-- evidence/raw/pi_agent_eval/results_pi_*.jsonl    (Pi Real-Agent Multi-Turn Evals: 40 live pi v1.6.0 sessions on GPT 6 Luna)
+- evidence/raw/pi_agent_eval/results_pi_*.jsonl    (Pi Real-Agent Multi-Turn Evals: 55 live pi v1.6.0 sessions on GPT 6 Luna)
 
 Enforces strict unit-of-analysis hygiene (zero pseudoreplication):
 - Aggregates repeated runs per prompt_id into prompt means before hypothesis testing.
@@ -459,15 +459,20 @@ def main() -> int:
 
     pi_main_path = raw_pi / "results_pi_luna_n5.jsonl"
     pi_ab_path = raw_pi / "results_pi_ab_step3_fix.jsonl"
+    pi_slim_path = raw_pi / "results_pi_slim_v2_n5.jsonl"
     pi_main_recs = [
         json.loads(ln) for ln in pi_main_path.read_text(encoding="utf-8").splitlines() if ln.strip()
     ] if pi_main_path.exists() else []
     pi_ab_recs = [
         json.loads(ln) for ln in pi_ab_path.read_text(encoding="utf-8").splitlines() if ln.strip()
     ] if pi_ab_path.exists() else []
-    pi_total = len(pi_main_recs) + len(pi_ab_recs)
-    pi_errors = sum(1 for r in (pi_main_recs + pi_ab_recs) if r.get("agent_error") is not None)
-    pi_iso_ok = sum(1 for r in (pi_main_recs + pi_ab_recs) if r.get("isolation_ok"))
+    pi_slim_recs = [
+        json.loads(ln) for ln in pi_slim_path.read_text(encoding="utf-8").splitlines() if ln.strip()
+    ] if pi_slim_path.exists() else []
+    pi_all_recs = pi_main_recs + pi_ab_recs + pi_slim_recs
+    pi_total = len(pi_all_recs)
+    pi_errors = sum(1 for r in pi_all_recs if r.get("agent_error") is not None)
+    pi_iso_ok = sum(1 for r in pi_all_recs if r.get("isolation_ok"))
 
     if not grouped_a:
         print(f"ERROR: No Phase A JSONL files found in {raw_a}", file=sys.stderr)
@@ -1249,7 +1254,7 @@ def main() -> int:
             parts = [f"{k}={int(sum(r['metrics'][k] for r in by_c[c]))}/12" for k in ("c1_length", "c2_keywords", "c3_negative", "c4_headers", "c5_severity", "c6_terminal")]
             lines.append(f"- `{c}`: " + ", ".join(parts))
 
-    if pi_main_recs or pi_ab_recs:
+    if pi_main_recs or pi_ab_recs or pi_slim_recs:
         def exact_perm_p(xs: List[float], ys: List[float]) -> float:
             obs = abs(statistics.mean(ys) - statistics.mean(xs))
             comb = xs + ys
@@ -1267,7 +1272,7 @@ def main() -> int:
 
         lines.extend([
             "",
-            "## 10. Real-Agent Multi-Turn Skill Evaluation (`pi v1.6.0`, `GPT 6 Luna`, `40` Isolated Sessions)",
+            f"## 10. Real-Agent Multi-Turn Skill Evaluation (`pi v1.6.0`, `GPT 6 Luna`, `{pi_total}` Isolated Sessions)",
             "",
             "Executed headlessly via `evidence/harnesses/pi_agent_eval.py` (`pi -p --mode json --no-session -ne -nc --no-mcp -np -na -ns`, `--thinking high`, `--tools read,edit,write,bash`) with deterministic external workspace graders (zero LLM judges).",
             "",
@@ -1320,6 +1325,38 @@ def main() -> int:
                     f"**{sum(1 for r in aft if r['checks']['verify_skill_generic_exit0']['ok'])}/{len(aft)}** | {atok:,.0f} | {as_:.1f}s | "
                     f"checks={fmt_p(p_chk)}, strict={fmt_p(p_str)} |",
                 ])
+
+        if pi_slim_recs and pi_main_recs:
+            lines.extend([
+                "",
+                "### 10.3 Post-Slim Behavioral Verification (`115.5 KB` Runtime Package vs. `242 KB` Prior & Baseline, `N = 5`, `15` Sessions)",
+                "",
+                "| Task | Baseline (`-ns`) | Prior Skill (`242 KB`) | Slim Skill (`115.5 KB`) | Slim vs. Prior p | Slim vs. Base p | Tokens (Prior -> Slim) |",
+                "| :--- | :---: | :---: | :---: | :---: | :---: | :---: |",
+            ])
+            for tid in ("multi_provider_tools", "broken_skill_repair", "prompt_hardening_refactor"):
+                b = [r for r in pi_main_recs if r["task_id"] == tid and r["variant"] == "baseline"]
+                prev = (
+                    [r for r in pi_ab_recs if r["variant"] == "after"]
+                    if tid == "broken_skill_repair" and pi_ab_recs
+                    else [r for r in pi_main_recs if r["task_id"] == tid and r["variant"] == "with_skill"]
+                )
+                cur = [r for r in pi_slim_recs if r["task_id"] == tid]
+                if not b or not prev or not cur:
+                    continue
+                bm = statistics.mean(r["check_score"] for r in b) * 100
+                pm = statistics.mean(r["check_score"] for r in prev) * 100
+                cm = statistics.mean(r["check_score"] for r in cur) * 100
+                p_prev = exact_perm_p([r["check_score"] for r in prev], [r["check_score"] for r in cur])
+                p_base = exact_perm_p([r["check_score"] for r in b], [r["check_score"] for r in cur])
+                ptok = statistics.mean(r["total_tokens"] for r in prev)
+                ctok = statistics.mean(r["total_tokens"] for r in cur)
+                lines.append(
+                    f"| `{tid}` | {bm:.1f}% (`{[r['passed_checks'] for r in b]}`) | "
+                    f"{pm:.1f}% (`{[r['passed_checks'] for r in prev]}`) | "
+                    f"{cm:.1f}% (`{[r['passed_checks'] for r in cur]}`) | "
+                    f"{fmt_p(p_prev)} | {fmt_p(p_base)} | {ptok:,.0f} -> {ctok:,.0f} |"
+                )
 
     lines.append("")
     rendered = "\n".join(lines).replace("\r\n", "\n")

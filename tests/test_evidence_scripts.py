@@ -402,18 +402,22 @@ class TestPiAgentEvalIntegrity(unittest.TestCase):
         pi_dir = REPO_ROOT / "evidence" / "raw" / "pi_agent_eval"
         main_p = pi_dir / "results_pi_luna_n5.jsonl"
         ab_p = pi_dir / "results_pi_ab_step3_fix.jsonl"
+        slim_p = pi_dir / "results_pi_slim_v2_n5.jsonl"
         main_recs = [json.loads(ln) for ln in main_p.read_text(encoding="utf-8").splitlines() if ln.strip()]
         ab_recs = [json.loads(ln) for ln in ab_p.read_text(encoding="utf-8").splitlines() if ln.strip()]
+        slim_recs = [json.loads(ln) for ln in slim_p.read_text(encoding="utf-8").splitlines() if ln.strip()]
         self.assertEqual(len(main_recs), 30)
         self.assertEqual(len(ab_recs), 10)
-        for p in (main_p, ab_p):
+        self.assertEqual(len(slim_recs), 15)
+        for p in (main_p, ab_p, slim_p):
             raw = p.read_bytes()
             self.assertNotIn(b"\r\n", raw)
             txt = raw.decode("utf-8")
             self.assertNotIn("Users/brat", txt)
             self.assertNotIn("Users\\brat", txt)
+            self.assertNotIn("AppData", txt)
             self.assertNotIn("10.0.0.", txt)
-        for r in main_recs + ab_recs:
+        for r in main_recs + ab_recs + slim_recs:
             self.assertIsNone(r["agent_error"])
             self.assertTrue(r["isolation_ok"])
             self.assertEqual(r["passed_checks"], sum(1 for v in r["checks"].values() if v["ok"]))
