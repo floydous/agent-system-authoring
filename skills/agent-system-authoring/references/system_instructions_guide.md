@@ -1,19 +1,19 @@
 # Engineering Guide: System Instructions & Prompt Architecture
 
 ## Overview
-This guide documents rules for authoring LLM system instructions, tagged by evidence tier (`T2` Measured Empirically across `GPT 6 Luna`, `Particle-1`, and/or `Nemotron 3.5 Lightning`, `T3` Current Vendor Guidance, `T5` Literature — Learned Behavior, `Methodology`, and `Contested`). Current closed frontier models (`Gemini 4 Hydrogen`, `Claude Fable 5.2`, `Claude Opus 5.5`, `GPT 6.2 Astra`) were not evaluated in the cited academic papers and were not available on our router.
+This guide documents rules for authoring LLM system instructions, tagged by evidence tier (`T2` Measured Empirically across `GPT 6 Luna`, `Particle-1`, `Nemotron 3.5 Lightning`, and/or `Ling 3.2 Flash`, `T3` Current Vendor Guidance, `T5` Literature — Learned Behavior, `Methodology`, and `Contested`). Current closed frontier models (`Gemini 4 Hydrogen`, `Claude Fable 5.2`, `Claude Opus 5.5`, `GPT 6.2 Astra`) were not evaluated in the cited academic papers and were not available on our router.
 
 ---
 
 ### R-SYS-01: Instruction Density & Phase Segmentation
-- **Evidence Tier**: **T2 (Measured on `GPT 6 Luna`, `PE-1`)** + **T5 (Literature — Learned Behavior)**
+- **Evidence Tier**: **T2 (Measured across 2 architectures: `GPT 6 Luna` `PE-1` & `Ling 3.2 Flash` `LING-PE1`)** + **T5 (Literature — Learned Behavior)**
 - **Primary Citations**:
-  - `PE-1` (`16` prompts × `4` densities × `5` = `320` calls) in [stats_recomputed.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/stats_recomputed.md).
+  - `PE-1` & `LING-PE1` (`16` prompts × `4` densities × `5` = `320` calls each) in [stats_recomputed.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/stats_recomputed.md).
   - Jaroslawicz, Whiting, Shah, & Maamari (Jul 2025), *How Many Instructions Can LLMs Follow at Once?*, [arXiv:2507.11538](https://arxiv.org/abs/2507.11538).
   - Harada, Yamazaki, Taniguchi, Marrese-Taylor, Kojima, Iwasawa, & Matsuo (Sep 2025), *When Instructions Multiply*, EMNLP Findings, [arXiv:2509.21051](https://arxiv.org/abs/2509.21051).
-- **Models Tested**: `GPT 6 Luna` (`PE-1`, `high` effort); IFScale: `20` models across `7` providers (incl. o3, GPT-4.1, GPT-4o, Claude Sonnet 4/Opus 4, Gemini 2.5 Pro, Llama 4 Scout); ManyIFEval/StyleMBPP: `10` LLMs.
+- **Models Tested**: `GPT 6 Luna` (`PE-1`, `high` effort); `Ling 3.2 Flash` `~560B-A25B` Hybrid-Linear MoE (`LING-PE1`, `thinking_off`); IFScale (`20` models / `7` providers); ManyIFEval/StyleMBPP (`10` LLMs).
 - **Verified Finding**:
-  Simultaneous instruction compliance degrades as constraint count increases. In IFScale (`10` to `500` keyword-inclusion constraints), even the strongest frontier models achieved `68%` accuracy at `500` instructions, displaying threshold/linear/exponential decay alongside primacy bias. In Phase E **`PE-1`** on `GPT 6 Luna (high)` using nested mutually satisfiable non-keyword behavioral rules, `rules_10` hit **`80/80` (`100.0%`)** strict all-rule compliance (`rules_05` scored `46/80` solely from unconstrained `R02` word-count drift before `R06–R08` section structure entered), whereas scaling to `rules_20` and `rules_50` cut `strict_all` to **`39/80` (`48.8%`, `t(15) = -9.94, p = 5.380e-08`)** and **`47/80` (`58.8%`, `t(15) = -7.34, p = 2.436e-06`, `sign = 0+/16-, p = 3.052e-05`)** while multiplying reasoning tokens **`3.5×` (`256.6 -> 905.3`, `p = 2.746e-12`)** and latency **`1.9×` (`13.09s -> 25.04s`, `p = 2.829e-10`)** (`core5_score` primacy rules stayed `100%`). *(No universal `<= 10` cliff is claimed.)*
+  Simultaneous instruction compliance degrades as constraint count increases. On `GPT 6 Luna (high)` (`PE-1`), `rules_10` hit `80/80` (`100.0%`), whereas `rules_20` and `rules_50` cut `strict_all` to **`39/80` (`48.8%`, `p = 5.38e-08`)** and **`47/80` (`58.8%`, `t(15) = -7.34, p = 2.436e-06`)** while multiplying reasoning tokens **`3.5×` (`256.6 -> 905.3`, `p = 2.746e-12`)** (`core5` primacy rules stayed `100%`). On `Ling 3.2 Flash (thinking_off, rtok = 0)` (`LING-PE1`), without reasoning compute to absorb rule load, `strict_all` collapsed monotonically **`97.5%` (`78/80`) -> `55.0%` (`44/80`, `p = 1.03e-05`) -> `32.5%` (`26/80`, `p = 3.99e-07`) -> `16.2%` (`13/80`, `t(15) = -15.29, p = 1.478e-10`, `sign = 0+/16-`)**, eroding even `core5` primacy rules (`0.995 -> 0.840`, `p = 4.00e-10`). *(No universal `<= 10` cliff is claimed.)*
 - **Authoring Directive**:
   - Minimize concurrent active instructions per interaction turn.
   - Segment large multi-step rulebooks into phase-specific prompts or modular on-demand skills rather than monolithic system prompts.
@@ -65,16 +65,16 @@ This guide documents rules for authoring LLM system instructions, tagged by evid
 ---
 
 ### R-SYS-05: Explicit Prohibitions Over Affirmative-Only Phrasing
-- **Evidence Tier**: **T2 (Measured across 3 model families & 2 architectures: `GPT 6 Luna` `PC-2`, `Particle-1` `H08-PC2`, `Nemotron 3.5 Lightning` `NEMO-PC2`)**
+- **Evidence Tier**: **T2 (Measured across 4 model families & 3 architectures: `GPT 6 Luna`, `Particle-1`, `Nemotron 3.5 Lightning`, `Ling 3.2 Flash`)**
 - **Primary Citations**:
-  - `PC-2`, `H08-PC2`, `NEMO-PC2` (`16` prompts × `5` repeats) & `PB-4` ([stats_recomputed.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/stats_recomputed.md)) & `SP-2` in [empirical_results.md](empirical_results.md).
+  - `PC-2`, `H08-PC2`, `NEMO-PC2`, `LING-PC2` (`16` prompts × `5` repeats) & `PB-4` ([stats_recomputed.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/stats_recomputed.md)) & `SP-2` in [empirical_results.md](empirical_results.md).
   - Jang, Ye, & Seo (Sep 2022), *Can Large Language Models Truly Understand Prompts? A Case Study with Negated Prompts*, [arXiv:2209.12711](https://arxiv.org/abs/2209.12711) *(inverse scaling observed on `OPT 125M–175B`, `GPT-3`, `InstructGPT`)*.
-- **Models Tested**: `GPT 6 Luna` (`PC-2` `high`, `PB-4`/`SP-2` `xhigh`); `Particle-1` / DeepSeek V4.1 Flash (`H08-PC2`); `Nemotron 3.5 Lightning` `30B-A3B` Mamba-2 SSM (`NEMO-PC2`, `thinking_off`); `OPT (125M–175B)`, `GPT-3`, `InstructGPT` (Jang et al.).
+- **Models Tested**: `GPT 6 Luna` (`PC-2`); `Particle-1` / DeepSeek V4.1 Flash (`H08-PC2`); `Nemotron 3.5 Lightning` Mamba-2 SSM (`NEMO-PC2`, `thinking_off`); `Ling 3.2 Flash` Hybrid-Linear MoE (`LING-PC2`); `OPT`, `GPT-3`, `InstructGPT` (Jang et al.).
 - **Verified `T2` Evidence & Scope Boundaries (Prompt-Level Inference)**:
-  Unlike pre-2023 models in Jang et al., all three tested modern families reliably followed explicit lexical exclusions:
+  Unlike pre-2023 models in Jang et al., all four tested modern families reliably followed explicit lexical exclusions:
   - **`GPT 6 Luna` (`PC-2`, `16 × 5`)**: `bare_negative` **`0.988` (`79/80`)** and `paired_affirmative` **`0.950` (`76/80`)** beat `affirmative_only` (**`0.650`**, `52/80`, `38` hits): **`t(15) = 4.06, p = 0.0010`** and **`t(15) = 3.87, p = 0.0015`**.
-  - **`Particle-1` / DeepSeek V4.1 Flash (`H08-PC2`, `16 × 5`)**: `bare_negative` (**`80/80`**) and `paired_affirmative` (**`80/80`**) beat `affirmative_only` (**`51/80`**, `63.8%`, `31` hits): **`t(15) = 3.95, p = 0.0013`**, while `paired_affirmative` burned **`+91.1` extra reasoning tokens** (`p = 6.584e-05`).
-  - **`Nemotron 3.5 Lightning` (`NEMO-PC2`, `30B-A3B` Mamba-2 SSM, `thinking_off`, `16 × 5`)**: On pure `lexical_clean`, `bare_negative` (**`71/80`, `88.8%`**, `t(15) = 4.23, p = 0.0007`) and `paired_affirmative` (**`73/80`, `91.2%`**, `t(15) = 5.16, p = 0.0001`) decisively beat `affirmative_only` (**`43/80`, `53.8%`**, `45` hits; `paired` vs `bare` lexical `p = 0.6326`). On small non-reasoning models, concrete substitutes also aided prose length (`length_ok` `58.8% -> 70.0%`, combined `0.613` vs `0.412`, `p = 0.0035`).
+  - **`Particle-1` (`H08-PC2`) & `Ling 3.2 Flash` (`LING-PC2`)**: Both `bare_negative` (**`80/80`**) and `paired_affirmative` (**`80/80`**) hit `100%` on both families vs `affirmative_only` **`51/80` (`63.8%`, `p = 0.0013`)** on `Particle-1` and **`58/80` (`72.5%`, `t(15) = 5.06, p = 0.0001`)** on `Ling` (`paired` vs `bare` exact tie; `+91.1` extra rtok on `Particle-1`, `p = 6.58e-05`).
+  - **`Nemotron 3.5 Lightning` (`NEMO-PC2`, `30B-A3B` Mamba-2 SSM, `thinking_off`, `16 × 5`)**: On pure `lexical_clean`, `bare_negative` (**`71/80`, `88.8%`**, `p = 0.0007`) and `paired_affirmative` (**`73/80`, `91.2%`**, `p = 0.0001`) beat `affirmative_only` (**`43/80`, `53.8%`**; `paired` vs `bare` lexical `p = 0.6326`), while substitutes aided small non-reasoning `length_ok` (`58.8% -> 70.0%`).
   - **Design & Construct Boundary (`PC-2` / `H08-PC2` / `NEMO-PC2`)**: `affirmative_only` suggested preferred terms (`"such as..."`) without disclosing the 4-word blacklist. Across all 3 families, (a) omitting named bans fails often (`53.8%–65.0%`), (b) explicit `Do NOT` prohibitions work reliably (`88.8%–100.0%`), and (c) substitutes add zero lexical-exclusion gain (`p >= 0.33`), though they can support fluency on small (`3B`-active) non-reasoning models.
   - **Hyphenated-Compound Edge Case**: Every lexical failure under explicit prohibitions on `GPT 6 Luna` (`5` hits in `PC-2`: `consecutive-failure`; `3` hits in `PB-4`: `operating-system`) was a **hyphenated compound** matching `\b<word>\b` (`Particle-1` had `0` misses).
 - **Authoring Directive**:

@@ -1,7 +1,7 @@
 # Engineering Guide: Tool Schemas & Function Calling
 
 ## Overview
-This guide documents rules for designing tool and function schemas (JSON Schema, OpenAI Structured Outputs, Anthropic Tool Use, and Gemini Function Calling), tagged by evidence tier (`T1` Verified Fact, `T2` Measured Empirically across `GPT 6 Luna`, `Particle-1`, and/or `Nemotron 3.5 Lightning`, `T3` Current Vendor Guidance, `T4` Mechanism, `T5` Learned Behavior).
+This guide documents rules for designing tool and function schemas (JSON Schema, OpenAI Structured Outputs, Anthropic Tool Use, and Gemini Function Calling), tagged by evidence tier (`T1` Verified Fact, `T2` Measured Empirically across `GPT 6 Luna`, `Particle-1`, `Nemotron 3.5 Lightning`, and/or `Ling 3.2 Flash`, `T3` Current Vendor Guidance, `T4` Mechanism, `T5` Learned Behavior).
 
 ---
 
@@ -48,27 +48,27 @@ This guide documents rules for designing tool and function schemas (JSON Schema,
 ---
 
 ### R-TOOL-04: Description Neutrality & Anti-Gaming Hygiene
-- **Evidence Tier**: **T2 (Measured across 3 model families & 2 architectures: `GPT 6 Luna` `PC-1`, `Particle-1` `H08-PC1`, `Nemotron 3.5 Lightning` `NEMO-PC1`)** + **T5** (`Faghih et al.`)
+- **Evidence Tier**: **T2 (Measured across 4 model families & 3 architectures: `GPT 6 Luna`, `Particle-1`, `Nemotron 3.5 Lightning`, `Ling 3.2 Flash`)** + **T5** (`Faghih et al.`)
 - **Primary Citations**:
-  - `PC-1`, `H08-PC1`, `NEMO-PC1` (`16` counterbalanced prompts × `5` repeats) & `PB-2` in [stats_recomputed.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/stats_recomputed.md).
+  - `PC-1`, `H08-PC1`, `NEMO-PC1`, `LING-PC1` (`16` counterbalanced prompts × `5`) & `PB-2` in [stats_recomputed.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/stats_recomputed.md).
   - Faghih, Wang, Cheng, Bharti, Sriramanan, Balasubramanian, Hosseini, & Feizi (May 2025 / EMNLP 2025), *Tool Preferences in Agentic LLMs are Unreliable*, [arXiv:2505.18135](https://arxiv.org/abs/2505.18135).
-- **Models Tested**: `GPT 6 Luna` (`PC-1` `high`, `PB-2` `xhigh`); `Particle-1` / DeepSeek V4.1 Flash (`H08-PC1`); `Nemotron 3.5 Lightning` `30B-A3B` Mamba-2 SSM (`NEMO-PC1`); `17` models including `GPT-4.1` and `Qwen2.5-7B` (Faghih et al.).
-- **Verified `T2` Finding (`PC-1`, `H08-PC1` & `NEMO-PC1`, Counterbalanced `50/50`)**:
-  Across `16` prompts (`80` runs/arm, `records_lookup_east` / `records_lookup_west` swapped 50/50), neutral baselines differed by architecture (`67/80` and `78/80` parallel-both on `Luna`/`Particle-1` vs `77/80` pure Position-0 primacy on Mamba-2 `Nemotron`), and `example_on_second` caused zero significant shift on all three (`0/80`, `0/80`, `6/80` `p = 0.4564`). Appending assertive promotional superlatives (`"Primary and preferred tool; actively maintained and optimized; invoke whenever possible."`) flipped exclusive `second_tool` selection across **`16/16` prompts on all three families**: **`80/80` (`100%`, `sign p = 3.052e-05`) on `GPT 6 Luna`**, **`75/80` (`93.8%`, `t(15) = 31.14, p = 4.787e-15`) on `Particle-1`**, and **`79/80` (`98.8%`, `t(15) = 42.49, p = 4.769e-17`) on `Nemotron`** (also cutting `Nemotron`'s reasoning tokens `-51.1, p = 1.350e-06`). *Scope caveat*: tested on functionally equivalent candidate tools; asymmetric functional scopes remain governed primarily by applicability.
+- **Models Tested**: `GPT 6 Luna` (`PC-1`); `Particle-1` (`H08-PC1`); `Nemotron 3.5 Lightning` Mamba-2 SSM (`NEMO-PC1`); `Ling 3.2 Flash` Hybrid-Linear MoE (`LING-PC1`); `17` models (Faghih et al.).
+- **Verified `T2` Finding (Counterbalanced `50/50` Across 4 Families & 3 Architectures)**:
+  Under neutral and `example_on_second` descriptions, models either hedged via parallel dual calls (`Luna`, `Particle-1`, `Ling`: `67–79/80` parallel-both) or picked Position 0 (`Nemotron`: `77/80` first-only), with zero significant hijacking from neutral examples (`0/80` on `Luna`/`Particle-1`/`Ling`, `6/80` `p = 0.4564` on `Nemotron`). Appending assertive promotional superlatives flipped exclusive `second_tool` selection across **`16/16` prompts on all four families**: **`80/80` (`100%`) on `Luna` and `Ling`**, **`75/80` (`93.8%`, `p = 4.79e-15`) on `Particle-1`**, and **`79/80` (`98.8%`, `p = 4.77e-17`) on `Nemotron`** — while also short-circuiting deliberation on both `Nemotron` (`-51.1` rtok, `p = 1.35e-06`) and `Ling` (`-47.7` rtok, `p = 2.48e-07`).
 - **Schema Directive**:
-  - Keep tool descriptions objective and strictly neutral; omit promotional superlatives (`"best"`, `"preferred"`, `"invoke whenever possible"`). Neutral usage examples alone did not bias selection in `PC-1`, `H08-PC1`, `NEMO-PC1`, or `PB-2`.
+  - Keep tool descriptions objective and strictly neutral; omit promotional superlatives (`"best"`, `"preferred"`, `"invoke whenever possible"`). Neutral usage examples alone did not bias selection across any tested architecture.
 
 ---
 
 ### R-TOOL-05: Parameter Descriptions & Provider-Supported Structural Constraints
-- **Evidence Tier**: **T2 (Measured across 3 model families & 2 architectures: `GPT 6 Luna` `PD-1`/`PD-2`, `Particle-1` `H08-PD1`, `Nemotron 3.5 Lightning` `NEMO-PD1`)** + **T1 (Verified Provider JSON Schema Subsets)** + **T5** (`ToolSandbox`)
+- **Evidence Tier**: **T2 (Measured across 4 model families & 3 architectures: `GPT 6 Luna`, `Particle-1`, `Nemotron 3.5 Lightning`, `Ling 3.2 Flash`)** + **T1** + **T5** (`ToolSandbox`)
 - **Primary Citations**:
-  - `PD-1`, `H08-PD1`, `NEMO-PD1`, `PD-2` & `TS-2` in [stats_recomputed.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/stats_recomputed.md).
-  - OpenAI / Anthropic / Gemini JSON Schema validation-keyword checks (retrieved 2026-11-23 & 2026-11-26, [source_checks.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/source_checks.md)).
+  - `PD-1`, `H08-PD1`, `NEMO-PD1`, `LING-PD1`, `PD-2` & `TS-2` in [stats_recomputed.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/stats_recomputed.md).
+  - OpenAI / Anthropic / Gemini JSON Schema validation-keyword checks ([source_checks.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/source_checks.md)).
   - Lu et al. (ToolSandbox, NAACL 2025 Findings), [arXiv:2408.04682](https://arxiv.org/abs/2408.04682).
-- **Models Tested**: `GPT 6 Luna` (`PD-1`, `PD-2`, `TS-2`); `Particle-1` / DeepSeek V4.1 Flash (`H08-PD1`); `Nemotron 3.5 Lightning` `30B-A3B` Mamba-2 SSM (`NEMO-PD1`); `GPT-4`, `GPT-4o`, `Claude-3-Sonnet`, `Gemini-1.5` (ToolSandbox).
-- **Verified `T2` Findings (`PD-1`, `H08-PD1`, `NEMO-PD1` & `PD-2`, Prompt-Level `N = 5`)**:
-  - **Cross-Architecture `N = 5` Replication (`75` runs/arm)**: Omitting parameter descriptions collapsed overall validity to **`2/75` (`2.7%`, `p = 1.335e-17`) on `GPT 6 Luna`**, **`5/75` (`6.7%`, `p = 5.203e-13`) on `Particle-1`**, and **`6/75` (`8.0%`, `p = 8.093e-13`) on `Nemotron 3.5 Lightning`** vs **`75/75` (`100.0%`)** with descriptions on all three families. On `Nemotron`, all three fields degraded without descriptions (`timestamp` `81.3%, p = 0.0011`; `currency` `77.3%, p = 0.0182`; `geo` `9.3%, p = 1.11e-12`). Explicit descriptions also **cut reasoning tokens across all 3 families** (`-5.6, p = 0.0105` on Luna; `-19.7, p = 0.0012` on `Particle-1`; **`-469.5` [`-45.0%`], `p = 2.177e-05` on `Nemotron`**).
+- **Models Tested**: `GPT 6 Luna` (`PD-1`/`PD-2`); `Particle-1` (`H08-PD1`); `Nemotron 3.5 Lightning` Mamba-2 SSM (`NEMO-PD1`); `Ling 3.2 Flash` Hybrid-Linear MoE (`LING-PD1`); ToolSandbox models.
+- **Verified `T2` Findings (Prompt-Level `N = 5` Across 4 Families & 3 Architectures)**:
+  - **Cross-Architecture `N = 5` Replication (`75` runs/arm)**: Omitting parameter descriptions collapsed overall validity to **`2.7%` (`2/75`, Luna)**, **`6.7%` (`5/75`, `Particle-1`)**, **`8.0%` (`6/75`, `Nemotron`)**, and **`5.3%` (`4/75`, `Ling`, `p = 2.796e-14`)** vs **`100.0%` (`75/75`)** with descriptions on all four families. Explicit descriptions also **reduced reasoning tokens on all four families** (`-5.6` Luna, `-19.7` `Particle-1`, **`-469.5` [`-45.0%`] `Nemotron`**, `-20.8` `Ling` `p = 0.0005`).
   - **Verbosity Curve (`PD-2`, `320` calls, `GPT 6 Luna`, `effort="none"`)**: `compact_15t` (`412.1` prompt tok) through `bloated_250t` (`2,375.1`) all achieved **`80/80` (`100.0%`)** — confirming compact descriptions (`~15–50` tokens/param) avoid `5.8×` prompt-token bloat (`+1,963` tok/call) with zero accuracy sacrifice.
 - **Schema Directive**:
   - Provide a concise, explicit `description` (`~15–50` tokens) for every parameter stating exact syntax examples, spacing rules (e.g., `"lat,lon"`), ISO code requirements, units, timezones, and bounds; avoid bloated multi-paragraph prose.
@@ -138,15 +138,16 @@ This guide documents rules for designing tool and function schemas (JSON Schema,
 ---
 
 ### R-TOOL-11: In-Schema `rationale` Field Strictly When Pre-Emission Thinking Is Absent
-- **Evidence Tier**: **T2 (Measured across 2 architectures: `GPT 6 Luna` `PB-6` & `Nemotron 3.5 Lightning` Mamba-2 SSM `NEMO-PB6`)** + **T4 (Mechanism: autoregressive left-to-right constrained decoding)**
+- **Evidence Tier**: **T2 (Measured across 3 architectures: `GPT 6 Luna` `PB-6`, `Nemotron 3.5 Lightning` Mamba-2 SSM `NEMO-PB6`, `Ling 3.2 Flash` KDA+MLA MoE `LING-PB6`)** + **T4 (Mechanism: autoregressive left-to-right constrained decoding)**
 - **Primary Citations**:
-  - `NEMO-PB6` (`16` prompts × `5`, `thinking_off`, `rtok = 0`), `PB-6` (`reasoning_effort = "none"`) & `TS-3` (`xhigh`) in [stats_recomputed.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/stats_recomputed.md).
+  - `LING-PB6`, `NEMO-PB6` (`16` prompts × `5`, `thinking_off`, `rtok = 0`), `PB-6` (`reasoning_effort = "none"`) & `TS-3` (`xhigh`) in [stats_recomputed.md](https://github.com/floydous/agent-system-authoring/blob/main/evidence/stats_recomputed.md).
   - Tam, Wu, Tsai, Lin, Lee, & Chen (Aug 2024 / EMNLP 2024), *Let Me Speak Freely?*, [arXiv:2408.02442](https://arxiv.org/abs/2408.02442).
   - Nguyen et al. (Jan 2026), *Thinking Before Constraining*, [arXiv:2601.07525](https://arxiv.org/abs/2601.07525) & Anthropic `define-tools`.
-- **Models Tested**: `GPT 6 Luna` (`PB-6` `none` & `TS-3` `xhigh`); `Nemotron 3.5 Lightning` `30B-A3B` Mamba-2 SSM (`NEMO-PB6`, `thinking_off`); non-reasoning LLMs (Tam et al., Nguyen et al.).
-- **Verified `T2` & `T4` Result (`NEMO-PB6` Powered `16`-Prompt & `PB-6`, `reasoning_tokens = 0`)**:
-  - **`Nemotron 3.5 Lightning` (`NEMO-PB6`, Mamba-2 SSM, `16` prompts × `5` = `80`/arm, `rtok = 0`, `240/240` exact declared JSON key order)**: Both `no_rationale` and `rationale_last` scored **`0/80` (`0.0%`)**, whereas placing `rationale` **first** (`rationale_first`) surged to **`69/80` (`86.2%`, prompt-level `t(15) = 19.75, p = 3.773e-12`; exact sign `16+/0-, p = 3.052e-05`)**.
-  - **`GPT 6 Luna` (`PB-6`, `6` prompts × `5`, `rtok = 0`)**: `no_rationale` and `rationale_last` both scored **`11/30` (`36.7%`)** vs `rationale_first` **`30/30` (`100.0%`, `t(5) = 3.12, p = 0.0261`)**. Under `xhigh` pre-emission reasoning (`TS-3`), all orderings scored `15/15` (`100%`). Note that Anthropic `strict: true` preserves declared ordering only for `required` properties ahead of optional properties.
+- **Models Tested**: `GPT 6 Luna` (`PB-6`, `TS-3`); `Nemotron 3.5 Lightning` Mamba-2 SSM (`NEMO-PB6`); `Ling 3.2 Flash` Hybrid-Linear KDA+MLA MoE (`LING-PB6`); non-reasoning LLMs (Tam et al., Nguyen et al.).
+- **Verified `T2` & `T4` Result Across 3 Distinct Architectures (`reasoning_tokens = 0`)**:
+  - **`Ling 3.2 Flash` (`LING-PB6`, KDA+MLA MoE, `16 × 5`, `240/240` exact key order)**: `no_rationale` **`24/80` (`30.0%`)** and `rationale_last` **`29/80` (`36.2%`, `p = 0.0962`)** vs **`rationale_first` `76/80` (`95.0%`, `t(15) = 5.01, p = 0.0002`, `sign 13+/1-, p = 0.0018`)**.
+  - **`Nemotron 3.5 Lightning` (`NEMO-PB6`, Mamba-2 SSM, `16 × 5`, `240/240` exact key order)**: `no_rationale` and `rationale_last` both **`0/80` (`0.0%`)** vs **`rationale_first` `69/80` (`86.2%`, `t(15) = 19.75, p = 3.773e-12`, `sign 16+/0-, p = 3.052e-05`)**.
+  - **`GPT 6 Luna` (`PB-6`, `6 × 5`)**: `no_rationale` and `rationale_last` both **`11/30` (`36.7%`)** vs **`rationale_first` `30/30` (`100.0%`, `t(5) = 3.12, p = 0.0261`)**. Under `xhigh` pre-emission reasoning (`TS-3`), all orderings scored `15/15` (`100%`). Note that Anthropic `strict: true` preserves declared ordering only for `required` properties ahead of optional properties.
 - **T3 Anthropic Refusal Caveat**:
   Anthropic warns: *"If a parameter asks Claude why it is making the call, ask for a short explanation or the supporting evidence. A parameter that asks for the model's thinking or step-by-step reasoning might lead to a `reasoning_extraction` refusal."*
 - **Schema Directive**:

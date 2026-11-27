@@ -180,5 +180,41 @@ class TestPhaseFNemoIntegrity(unittest.TestCase):
                 self.assertNotIn("rationale", keys)
 
 
+class TestPhaseFLingIntegrity(unittest.TestCase):
+    def test_phase_f_ling_raw_traces_reevaluate_cleanly_with_zero_errors(self) -> None:
+        raw_ling = REPO_ROOT / "evidence" / "raw_phase_f_ling"
+        grouped = rs.load_records(raw_ling, "results_LING-*.jsonl")
+        self.assertEqual(
+            sorted(grouped.keys()),
+            ["LING-PB6", "LING-PC1", "LING-PC2", "LING-PD1", "LING-PD4", "LING-PD5", "LING-PE1"],
+        )
+        self.assertEqual(sum(len(v) for v in grouped.values()), 1510)
+        for hyp_id, recs in grouped.items():
+            self.assertIn(hyp_id, rs.PHASE_F_LING_BASELINES)
+            suite_key = hyp_id.split("-")[1]
+            suite_cls = pf.SUITE_SPECS[suite_key][0]
+            for r in recs:
+                self.assertIsNone(r.get("error"))
+                re_metrics = suite_cls.evaluate({"meta": r["meta"]}, r["response_text"], r.get("tool_calls", []))
+                self.assertEqual(re_metrics, r["metrics"], msg=f"Mismatch on {hyp_id} {r['prompt_id']} {r['condition']} it={r['iteration']}")
+
+        # Verify zero reasoning tokens and 100% declared JSON key order on LING-PB6
+        pb6_recs = grouped["LING-PB6"]
+        self.assertEqual(len(pb6_recs), 240)
+        for r in pb6_recs:
+            self.assertEqual(r.get("reasoning_tokens"), 0)
+            keys = r["metrics"]["emitted_keys"]
+            if r["condition"] == "rationale_first":
+                self.assertEqual(keys[0], "rationale")
+            elif r["condition"] == "rationale_last":
+                self.assertEqual(keys[-1], "rationale")
+            else:
+                self.assertNotIn("rationale", keys)
+
+        # Verify zero reasoning tokens on LING-PE1
+        for r in grouped["LING-PE1"]:
+            self.assertEqual(r.get("reasoning_tokens"), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

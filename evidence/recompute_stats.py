@@ -12,6 +12,7 @@ Reads all JSONL trace files under:
 - evidence/raw_phase_e/results_PE-*.jsonl          (Phase E: 880 records, N=5 runs/prompt, GPT 6 Luna high)
 - evidence/raw_h08_particle1/results_H08-*.jsonl   (H-08: 950 records, N=5 runs/prompt, Particle-1 / DeepSeek V4.1 Flash)
 - evidence/raw_phase_f_nemo/results_NEMO-*.jsonl   (Phase F: 1,190 records, N=5 runs/prompt, Nemotron 3.5 Lightning 30B-A3B Mamba-2 SSM)
+- evidence/raw_phase_f_ling/results_LING-*.jsonl   (Phase F: 1,510 records, N=5 runs/prompt, Ling 3.2 Flash ~560B-A25B Hybrid-Linear KDA+MLA MoE)
 
 Enforces strict unit-of-analysis hygiene (zero pseudoreplication):
 - Aggregates repeated runs per prompt_id into prompt means before hypothesis testing.
@@ -88,6 +89,16 @@ PHASE_F_NEMO_BASELINES: Dict[str, str] = {
     "NEMO-PD1": "without_descriptions",
     "NEMO-PD4": "arabic_digits",
     "NEMO-PE2": "system_only",
+}
+
+PHASE_F_LING_BASELINES: Dict[str, str] = {
+    "LING-PB6": "no_rationale",
+    "LING-PC1": "neutral",
+    "LING-PC2": "affirmative_only",
+    "LING-PD1": "without_descriptions",
+    "LING-PD4": "arabic_digits",
+    "LING-PD5": "json_schema",
+    "LING-PE1": "rules_05",
 }
 
 
@@ -419,6 +430,7 @@ def main() -> int:
     raw_e = evidence_dir / "raw_phase_e"
     raw_h08 = evidence_dir / "raw_h08_particle1"
     raw_f_nemo = evidence_dir / "raw_phase_f_nemo"
+    raw_f_ling = evidence_dir / "raw_phase_f_ling"
     out_path = evidence_dir / "stats_recomputed.md"
 
     grouped_a = load_records(raw_a, "results_*.jsonl")
@@ -428,6 +440,7 @@ def main() -> int:
     grouped_e = load_records(raw_e, "results_PE-*.jsonl")
     grouped_h08 = load_records(raw_h08, "results_H08-*.jsonl")
     grouped_f_nemo = load_records(raw_f_nemo, "results_NEMO-*.jsonl")
+    grouped_f_ling = load_records(raw_f_ling, "results_LING-*.jsonl")
 
     if not grouped_a:
         print(f"ERROR: No Phase A JSONL files found in {raw_a}", file=sys.stderr)
@@ -440,18 +453,20 @@ def main() -> int:
     total_e = sum(len(v) for v in grouped_e.values())
     total_h08 = sum(len(v) for v in grouped_h08.values())
     total_f_nemo = sum(len(v) for v in grouped_f_nemo.values())
-    grand_total = total_a + total_b + total_c + total_d + total_e + total_h08 + total_f_nemo
+    total_f_ling = sum(len(v) for v in grouped_f_ling.values())
+    grand_total = total_a + total_b + total_c + total_d + total_e + total_h08 + total_f_nemo + total_f_ling
     err_b = sum(1 for v in grouped_b.values() for r in v if r.get("error") is not None)
     err_c = sum(1 for v in grouped_c.values() for r in v if r.get("error") is not None)
     err_d = sum(1 for v in grouped_d.values() for r in v if r.get("error") is not None)
     err_e = sum(1 for v in grouped_e.values() for r in v if r.get("error") is not None)
     err_h08 = sum(1 for v in grouped_h08.values() for r in v if r.get("error") is not None)
     err_f_nemo = sum(1 for v in grouped_f_nemo.values() for r in v if r.get("error") is not None)
+    err_f_ling = sum(1 for v in grouped_f_ling.values() for r in v if r.get("error") is not None)
 
     lines: List[str] = [
         "# Recomputed Statistical Summary (Phases A–F & H-08 Cross-Architecture Replication)",
         "",
-        f"- **Total Benchmark Traces**: **{grand_total:,} records** (`{total_a + total_b + total_c + total_d + total_e:,}` on `GPT 6 Luna` + `{total_h08:,}` on `Particle-1` / DeepSeek V4.1 Flash + `{total_f_nemo:,}` on `Nemotron 3.5 Lightning` / `30B-A3B` Mamba-2 SSM Hybrid)",
+        f"- **Total Benchmark Traces**: **{grand_total:,} records** (`{total_a + total_b + total_c + total_d + total_e:,}` on `GPT 6 Luna` + `{total_h08:,}` on `Particle-1` / DeepSeek V4.1 Flash + `{total_f_nemo:,}` on `Nemotron 3.5 Lightning` / `30B-A3B` Mamba-2 SSM + `{total_f_ling:,}` on `Ling 3.2 Flash` / `~560B-A25B` Hybrid-Linear KDA+MLA MoE)",
         "- **Unit-of-Analysis Policy**: Zero pseudoreplication — repeated runs (`N = 5` per prompt) are aggregated into prompt-level means (`n = P` independent prompts) before inferential testing (paired *t*-test with `df = P - 1` and exact two-sided paired sign test). Pooled run counts and `TARa@K` are reported descriptively.",
         f"- **Phase A Traces**: `evidence/raw/` ({len(grouped_a)} suites, {total_a} records, 1 run/prompt, GPT 6 Luna)",
         f"- **Phase B Traces**: `evidence/raw_phase_b/` ({len(grouped_b)} suites, {total_b} records, 5 runs/prompt, GPT 6 Luna, gateway errors={err_b})",
@@ -460,13 +475,139 @@ def main() -> int:
         f"- **Phase E Traces**: `evidence/raw_phase_e/` ({len(grouped_e)} suites, {total_e} records, 5 runs/prompt, GPT 6 Luna high, gateway errors={err_e})",
         f"- **H-08 Particle-1 Traces**: `evidence/raw_h08_particle1/` ({len(grouped_h08)} suites, {total_h08} records, 5 runs/prompt, Particle-1 / DeepSeek V4.1 Flash, gateway errors={err_h08})",
         f"- **Phase F Nemotron Traces**: `evidence/raw_phase_f_nemo/` ({len(grouped_f_nemo)} suites, {total_f_nemo} records, 5 runs/prompt, Nemotron 3.5 Lightning 30B-A3B Mamba-2 SSM, gateway errors={err_f_nemo})",
+        f"- **Phase F Ling Traces**: `evidence/raw_phase_f_ling/` ({len(grouped_f_ling)} suites, {total_f_ling} records, 5 runs/prompt, Ling 3.2 Flash ~560B-A25B Hybrid-Linear KDA+MLA MoE, gateway errors={err_f_ling})",
         "- **Generated By**: `evidence/recompute_stats.py` (offline stdlib-only statistical verification)",
         "",
     ]
 
+    if grouped_f_ling:
+        lines.extend([
+            "## 1. Phase F Cross-Architecture Table (`N = 5` Runs/Prompt, `Ling 3.2 Flash` / `~560B-A25B` Hybrid-Linear KDA+MLA MoE)",
+            "",
+        ])
+        lines.extend(render_suite_table(grouped_f_ling, PHASE_F_LING_BASELINES, include_tara=True))
+        lines.extend(["", "### Phase F Detailed Prompt-Level Breakdowns (`Ling 3.2 Flash`)", ""])
+
+        if "LING-PB6" in grouped_f_ling:
+            by_c = defaultdict(list)
+            for r in grouped_f_ling["LING-PB6"]:
+                by_c[r["condition"]].append(r)
+            lines.extend([
+                "- **`LING-PB6` (`R-TOOL-11` Powered `16`-Prompt `rationale` Ordering, `thinking_off`, `reasoning_tokens = 0` on all 240 calls)**:",
+                "  - `no_rationale`=24/80 (30.0%), `rationale_last`=29/80 (36.2%), **`rationale_first`=76/80 (95.0%)**; exact declared JSON key order preserved on `240/240` calls.",
+                f"  - `rationale_first` vs `no_rationale`: {prompt_metric_pair_summary(by_c['rationale_first'], by_c['no_rationale'], 'score')}",
+                f"  - `rationale_first` vs `rationale_last`: {prompt_metric_pair_summary(by_c['rationale_first'], by_c['rationale_last'], 'score')}",
+            ])
+
+        if "LING-PE1" in grouped_f_ling:
+            by_c = defaultdict(list)
+            for r in grouped_f_ling["LING-PE1"]:
+                by_c[r["condition"]].append(r)
+            lines.append("- **`LING-PE1` (`R-SYS-01` Non-Reasoning Behavioral Rule Density, `thinking_off`, `16` prompts × `5` = `80` runs/arm)**:")
+            for c in ("rules_05", "rules_10", "rules_20", "rules_50"):
+                pt = statistics.mean(float(r.get("prompt_tokens") or 0.0) for r in by_c[c])
+                s_ok = sum(int(r["metrics"].get("strict_all", 0)) for r in by_c[c])
+                c5 = statistics.mean(float(r["metrics"].get("core5_score", 0.0)) for r in by_c[c])
+                lines.append(f"  - `{c}`: `strict_all`={s_ok}/80 ({100*s_ok/80:.1f}%), `core5_score`={c5:.4f}, prompt_tokens={pt:.1f}")
+            lines.extend([
+                f"  - `rules_10` vs `rules_05` (`strict_all`): {prompt_metric_pair_summary(by_c['rules_10'], by_c['rules_05'], 'strict_all')}",
+                f"  - `rules_20` vs `rules_05` (`strict_all`): {prompt_metric_pair_summary(by_c['rules_20'], by_c['rules_05'], 'strict_all')}",
+                f"  - `rules_50` vs `rules_05` (`strict_all`): {prompt_metric_pair_summary(by_c['rules_50'], by_c['rules_05'], 'strict_all')}",
+                f"  - `rules_50` vs `rules_05` (`core5_score`): {prompt_metric_pair_summary(by_c['rules_50'], by_c['rules_05'], 'core5_score')}",
+                f"  - `rules_50` vs `rules_10` (`strict_all`): {prompt_metric_pair_summary(by_c['rules_50'], by_c['rules_10'], 'strict_all')}",
+            ])
+
+        if "LING-PC1" in grouped_f_ling:
+            pc1_l = grouped_f_ling["LING-PC1"]
+            by_c = defaultdict(list)
+            for r in pc1_l:
+                by_c[r["condition"]].append(r)
+
+            def ling_call_pattern(recs: List[Dict[str, Any]]) -> Tuple[int, int, int, int, int]:
+                f_only = s_only = both = east_s = west_s = 0
+                for r in recs:
+                    tcs = [tc.get("function", {}).get("name") for tc in r.get("tool_calls", [])]
+                    if len(tcs) == 1:
+                        if tcs[0] == r["meta"]["first_tool"]:
+                            f_only += 1
+                        elif tcs[0] == r["meta"]["second_tool"]:
+                            s_only += 1
+                            if r["meta"]["second_tool"] == "records_lookup_east":
+                                east_s += 1
+                            else:
+                                west_s += 1
+                    elif len(tcs) >= 2:
+                        both += 1
+                return f_only, s_only, both, east_s, west_s
+
+            nf, ns, nb, _, _ = ling_call_pattern(by_c["neutral"])
+            ef, es, eb, _, _ = ling_call_pattern(by_c["example_on_second"])
+            af, a_s, ab, a_east, a_west = ling_call_pattern(by_c["assertive_on_second"])
+            lines.extend([
+                "- **`LING-PC1` (`R-TOOL-04` Tool Description Gaming on Hybrid-Linear MoE, `16` counterbalanced prompts × `5` = `80` runs/arm)**:",
+                f"  - `neutral`: `{nb}/80` parallel-both, `{nf}/80` exclusive `first_tool`, `{ns}/80` exclusive `second_tool`.",
+                f"  - `example_on_second`: `{eb}/80` parallel-both, `{ef}/80` exclusive `first_tool`, `{es}/80` exclusive `second_tool` (zero hijacking).",
+                f"  - `assertive_on_second`: `{ab}/80` parallel-both, `{af}/80` exclusive `first_tool`, **`{a_s}/80` (`{100*a_s/80:.1f}%`, `{a_east}` east / `{a_west}` west) exclusive `second_tool`**.",
+                f"  - `assertive_on_second` vs `neutral`: {prompt_metric_pair_summary(by_c['assertive_on_second'], by_c['neutral'], 'score')} (reasoning_tokens: {prompt_top_field_pair_summary(by_c['assertive_on_second'], by_c['neutral'], 'reasoning_tokens', 1)})",
+            ])
+
+        if "LING-PC2" in grouped_f_ling:
+            by_c = defaultdict(list)
+            for r in grouped_f_ling["LING-PC2"]:
+                by_c[r["condition"]].append(r)
+            lines.extend([
+                "- **`LING-PC2` (`R-SYS-05` & `C-01` Explicit Bans on Hybrid-Linear MoE, `16` × `5` = `80`/arm)**:",
+                f"  - `bare_negative` vs `affirmative_only`: {prompt_metric_pair_summary(by_c['bare_negative'], by_c['affirmative_only'], 'score')}",
+                f"  - `paired_affirmative` vs `affirmative_only`: {prompt_metric_pair_summary(by_c['paired_affirmative'], by_c['affirmative_only'], 'score')}",
+                f"  - `paired_affirmative` vs `bare_negative`: {prompt_metric_pair_summary(by_c['paired_affirmative'], by_c['bare_negative'], 'score')} (reasoning_tokens: {prompt_top_field_pair_summary(by_c['paired_affirmative'], by_c['bare_negative'], 'reasoning_tokens', 1)})",
+            ])
+            for c in ("affirmative_only", "bare_negative", "paired_affirmative"):
+                lex_ok = sum(int(r["metrics"].get("lexical_clean", 0)) for r in by_c[c])
+                len_ok = sum(int(r["metrics"].get("length_ok", 0)) for r in by_c[c])
+                hits = sum(int(r["metrics"].get("forbidden_word_count", 0)) for r in by_c[c])
+                lines.append(f"  - `{c}`: `lexical_clean`={lex_ok}/80 ({100*lex_ok/80:.1f}%), `length_ok`={len_ok}/80, forbidden hits={hits}")
+
+        if "LING-PD1" in grouped_f_ling:
+            by_c = defaultdict(list)
+            for r in grouped_f_ling["LING-PD1"]:
+                by_c[r["condition"]].append(r)
+            lines.append("- **`LING-PD1` (`R-TOOL-05` Parameter Descriptions on Hybrid-Linear MoE, `15` prompts × `5` = `75` runs/arm)**:")
+            for field in ("timestamp_valid", "currency_valid", "geo_valid", "all_fields_valid"):
+                b_ok = sum(int(r["metrics"].get(field, 0)) for r in by_c["without_descriptions"])
+                w_ok = sum(int(r["metrics"].get(field, 0)) for r in by_c["with_descriptions"])
+                pair_s = prompt_metric_pair_summary(by_c["with_descriptions"], by_c["without_descriptions"], field)
+                lines.append(f"  - `{field}`: `without`={b_ok}/75 ({100*b_ok/75:.1f}%) vs `with`={w_ok}/75 ({100*w_ok/75:.1f}%) | {pair_s}")
+            lines.append(f"  - Reasoning tokens (`with_descriptions` vs `without_descriptions`): {prompt_top_field_pair_summary(by_c['with_descriptions'], by_c['without_descriptions'], 'reasoning_tokens', 1)}")
+
+        if "LING-PD4" in grouped_f_ling:
+            by_c = defaultdict(list)
+            for r in grouped_f_ling["LING-PD4"]:
+                by_c[r["condition"]].append(r)
+            lines.append("- **`LING-PD4` (`H-06` Arabic Digits vs Spelled-Out Numbers on Hybrid-Linear MoE, `thinking_off`, `16` × `5` = `80`/arm)**:")
+            for mk in ("score", "c1_bullets", "bullet_word_frac", "c2_words_all", "c3_tags", "strict_all"):
+                am = statistics.mean(float(r["metrics"].get(mk, 0.0)) for r in by_c["arabic_digits"])
+                sm = statistics.mean(float(r["metrics"].get(mk, 0.0)) for r in by_c["spelled_words"])
+                pair_s = prompt_metric_pair_summary(by_c["spelled_words"], by_c["arabic_digits"], mk)
+                lines.append(f"  - `{mk}`: `arabic_digits`={am:.4f} vs `spelled_words`={sm:.4f} | spelled vs arabic: {pair_s}")
+
+        if "LING-PD5" in grouped_f_ling:
+            by_c = defaultdict(list)
+            for r in grouped_f_ling["LING-PD5"]:
+                by_c[r["condition"]].append(r)
+            js_pt = statistics.mean(float(r.get("prompt_tokens") or 0.0) for r in by_c["json_schema"])
+            ts_pt = statistics.mean(float(r.get("prompt_tokens") or 0.0) for r in by_c["typescript_interface"])
+            pct = 100.0 * (ts_pt - js_pt) / js_pt if js_pt else 0.0
+            lines.extend([
+                "- **`LING-PD5` (`H-07` Prompt-Injected JSON Schema vs TypeScript Interfaces on Hybrid-Linear MoE, `thinking_off`, `16` × `5` = `80`/arm)**:",
+                f"  - Accuracy (`score`): `json_schema`=80/80 (100.0%) vs `typescript_interface`=80/80 (100.0%) | {prompt_metric_pair_summary(by_c['typescript_interface'], by_c['json_schema'], 'score')}",
+                f"  - Prompt token cost: `json_schema`={js_pt:.1f} vs `typescript_interface`={ts_pt:.1f} ({pct:+.1f}%) | {prompt_top_field_pair_summary(by_c['typescript_interface'], by_c['json_schema'], 'prompt_tokens', 1)}",
+                f"  - Latency: {prompt_top_field_pair_summary(by_c['typescript_interface'], by_c['json_schema'], 'latency_seconds', 2)}",
+            ])
+        lines.append("")
+
     if grouped_f_nemo:
         lines.extend([
-            "## 1. Phase F Cross-Architecture Table (`N = 5` Runs/Prompt, `Nemotron 3.5 Lightning` / `30B-A3B` Mamba-2 SSM Hybrid)",
+            "## 2. Phase F Cross-Architecture Table (`N = 5` Runs/Prompt, `Nemotron 3.5 Lightning` / `30B-A3B` Mamba-2 SSM Hybrid)",
             "",
         ])
         lines.extend(render_suite_table(grouped_f_nemo, PHASE_F_NEMO_BASELINES, include_tara=True))
@@ -573,7 +714,7 @@ def main() -> int:
 
     if grouped_h08:
         lines.extend([
-            "## 2. H-08 Cross-Model Replication Table (`N = 5` Runs/Prompt, `Particle-1` / DeepSeek V4.1 Flash Lineage)",
+            "## 3. H-08 Cross-Model Replication Table (`N = 5` Runs/Prompt, `Particle-1` / DeepSeek V4.1 Flash Lineage)",
             "",
         ])
         lines.extend(render_suite_table(grouped_h08, H08_BASELINES, include_tara=True))
@@ -680,7 +821,7 @@ def main() -> int:
 
     if grouped_e:
         lines.extend([
-            "## 3. Phase E Summary Table (`N = 5` Runs/Prompt, `GPT 6 Luna`, `high` Effort: `R-SYS-01` & `C-02`/`C-03`/`C-04`)",
+            "## 4. Phase E Summary Table (`N = 5` Runs/Prompt, `GPT 6 Luna`, `high` Effort: `R-SYS-01` & `C-02`/`C-03`/`C-04`)",
             "",
         ])
         lines.extend(render_suite_table(grouped_e, PHASE_E_BASELINES, include_tara=True))
@@ -746,7 +887,7 @@ def main() -> int:
 
     if grouped_d:
         lines.extend([
-            "## 4. Phase D Summary Table (`N = 5` Runs/Prompt, Open Hypotheses `H-02`, `H-03`, `H-06`, `H-07`)",
+            "## 5. Phase D Summary Table (`N = 5` Runs/Prompt, Open Hypotheses `H-02`, `H-03`, `H-06`, `H-07`)",
             "",
         ])
         lines.extend(render_suite_table(grouped_d, PHASE_D_BASELINES, include_tara=True))
@@ -819,7 +960,7 @@ def main() -> int:
 
     if grouped_c:
         lines.extend([
-            "## 5. Phase C Summary Table (`N = 5` Runs/Prompt × `16` Prompts/Suite, High Effort, Counterbalanced / Powered)",
+            "## 6. Phase C Summary Table (`N = 5` Runs/Prompt × `16` Prompts/Suite, High Effort, Counterbalanced / Powered)",
             "",
         ])
         lines.extend(render_suite_table(grouped_c, PHASE_C_BASELINES, include_tara=True))
@@ -908,7 +1049,7 @@ def main() -> int:
 
     if grouped_b:
         lines.extend([
-            "## 6. Phase B Summary Table (`N = 5` Runs/Prompt × `6` Prompts/Suite, Prompt-Level Inference)",
+            "## 7. Phase B Summary Table (`N = 5` Runs/Prompt × `6` Prompts/Suite, Prompt-Level Inference)",
             "",
         ])
         lines.extend(render_suite_table(grouped_b, PHASE_B_BASELINES, include_tara=True))
@@ -954,7 +1095,7 @@ def main() -> int:
 
     lines.extend([
         "",
-        "## 7. Phase A Summary Table (Baseline Run `20261119_020610_3f7405`, `N = 1` Run/Prompt)",
+        "## 8. Phase A Summary Table (Baseline Run `20261119_020610_3f7405`, `N = 1` Run/Prompt)",
         "",
     ])
     lines.extend(render_suite_table(grouped_a, PHASE_A_BASELINES, include_tara=False))

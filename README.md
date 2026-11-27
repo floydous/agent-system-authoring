@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://github.com/floydous/agent-system-authoring/actions/workflows/verify.yml"><img src="https://github.com/floydous/agent-system-authoring/actions/workflows/verify.yml/badge.svg" alt="Verify Skill & Recompute Evidence"></a>
   <a href="https://agentskills.io/specification"><img src="https://img.shields.io/badge/Agent%20Skills-spec%20compliant-2a78d6" alt="Agent Skills Spec"></a>
-  <a href="skills/agent-system-authoring/SKILL.md"><img src="https://img.shields.io/badge/version-v1.4.0-4c1" alt="Version v1.4.0"></a>
+  <a href="skills/agent-system-authoring/SKILL.md"><img src="https://img.shields.io/badge/version-v2.0.0-4c1" alt="Version v2.0.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License"></a>
 </p>
 
@@ -21,10 +21,10 @@
 
 <table align="center">
   <tr>
-    <td align="center" width="190"><h3>5,238</h3><b>Benchmark runs</b><br><sub>3 model families, 2 architectures</sub></td>
+    <td align="center" width="190"><h3>6,748</h3><b>Benchmark runs</b><br><sub>4 model families, 3 architectures</sub></td>
     <td align="center" width="190"><h3>28</h3><b>Tagged rules</b><br><sub>every rule linked to its proof</sub></td>
     <td align="center" width="190"><h3>3</h3><b>API providers</b><br><sub>OpenAI, Anthropic, Gemini</sub></td>
-    <td align="center" width="190"><h3>214.6 KB</h3><b>Skill install</b><br><sub>55-line SKILL.md, 14 files</sub></td>
+    <td align="center" width="190"><h3>219.3 KB</h3><b>Skill install</b><br><sub>55-line SKILL.md, 14 files</sub></td>
   </tr>
 </table>
 
@@ -50,8 +50,8 @@ npx skills add floydous/agent-system-authoring --list
 # Install globally across projects
 npx skills add floydous/agent-system-authoring -g
 
-# Pin to the v1.4.0 release tag
-npx skills add floydous/agent-system-authoring@v1.4.0
+# Pin to the v2.0.0 release tag
+npx skills add floydous/agent-system-authoring@v2.0.0
 ```
 
 </details>
@@ -95,22 +95,22 @@ This skill gives coding agents a short, tested playbook for authoring system pro
 
 ## What held up
 
-We ran `5,238` benchmark calls across three model families (`GPT 6 Luna`, `Particle-1`, and `Nemotron 3.5 Lightning` Mamba-2 SSM) plus `490` skill-eval calls. Repeated runs (`N = 5` per prompt) are averaged at the prompt level before statistical testing to avoid inflated sample counts.
+We ran `6,748` benchmark calls across four model families (`GPT 6 Luna`, `Particle-1`, `Nemotron 3.5 Lightning` Mamba-2 SSM, and `Ling 3.2 Flash` Hybrid-Linear MoE) plus `490` skill-eval calls. Repeated runs (`N = 5` per prompt) are averaged at the prompt level before statistical testing to avoid inflated sample counts.
 
 | What we tested | Measured result | Practical rule |
 | :--- | :--- | :--- |
-| **Parameter descriptions** | `3%` to `8%` -> **`100%`** valid (`3/3` models) | Spell out exact formats, spacing, and units; also cut thinking tokens up to `45%`. |
-| **Assertive tool hype** (`"best"`, `"always use"`) | `0%` to `4%` -> **`94%` to `100%`** hijack (`3/3` models) | Promotional superlatives skew tool routing; keep descriptions factual and neutral. |
-| **Explicit word bans** vs polite hints | `54%` to `65%` -> **`89%` to `100%`** clean (`3/3` models) | Name forbidden words directly (plus compound rules) instead of relying on suggestions. |
-| **Rule count scaling** (`10` vs `20` to `50` rules) | `100%` -> **`49%` to `59%`** strict pass (`3.5x` thinking) | Keep active rule lists compact and break large instruction sets into phases. |
-| **In-schema `rationale` field** (thinking off) | `0%` to `37%` -> **`86%` to `100%`** (`2/2` architectures) | Put `rationale` first only when pre-output thinking is off; omit it on reasoning models. |
-| **TypeScript vs JSON Schema in prompts** | **`100%`** accuracy parity, **`~50%`** fewer prompt tokens | Use TypeScript interfaces inside prose prompts; keep JSON Schema for tool APIs. |
+| **Parameter descriptions** | `3%` to `8%` -> **`100%`** valid (`4/4` models) | Spell out exact formats, spacing, and units; also cut thinking tokens across all 4 families (up to `45%`). |
+| **Assertive tool hype** (`"best"`, `"always use"`) | `0%` to `4%` -> **`94%` to `100%`** hijack (`4/4` models) | Promotional superlatives skew tool routing; keep descriptions factual and neutral. |
+| **Explicit word bans** vs polite hints | `54%` to `73%` -> **`89%` to `100%`** clean (`4/4` models) | Name forbidden words directly (plus compound rules) instead of relying on suggestions. |
+| **Rule count scaling** (`5`/`10` -> `50` rules) | Luna `100%` -> **`49%`–`59%`** (`3.5x` thinking); Ling `98%` -> **`16%`** (`2/2` archs) | Keep active rule lists compact and break large instruction sets into phases. |
+| **In-schema `rationale` field** (thinking off) | `0%` to `37%` -> **`86%` to `100%`** (`3/3` architectures) | Put `rationale` first only when pre-output thinking is off; omit it on reasoning models. |
+| **TypeScript vs JSON Schema in prompts** | **`100%`** accuracy parity, **`49%` to `57%`** fewer prompt tokens (`3/3` models) | Use TypeScript interfaces inside prose prompts; keep JSON Schema for tool APIs. |
 | **Expert personas, spelled digits, `###` headers** | **No accuracy lift** (statistically flat) | Drop honorary expert personas, keep normal numbers, and write plain prose tool docs. |
 
 **Skill evals:** `1.000` precision and recall on the 9-skill trigger suite (`160` calls), `50/50` solo-skill precision, and `39/40` vs `38/40` on objective authoring probes ([evals_results.md](evidence/evals_results.md)).
 
 > [!NOTE]
-> Live runs tested `GPT 6 Luna`, `Particle-1` (DeepSeek V4.1 Flash lineage), and `Nemotron 3.5 Lightning` (`30B-A3B` Mamba-2 SSM). A `Ling 3.2 Flash` harness preset is ready in `evidence/phase_f_harness.py`, while closed frontier models (`Claude Opus 5.5`, `Claude Fable 5.2`, `Gemini 4 Hydrogen`, `GPT 6.2 Astra`) remain open in [unverified_hypotheses.md](skills/agent-system-authoring/references/unverified_hypotheses.md).
+> Live runs tested four model families across three architectures: `GPT 6 Luna`, `Particle-1` (DeepSeek V4.1 Flash lineage), `Nemotron 3.5 Lightning` (`30B-A3B` Mamba-2 SSM hybrid), and `Ling 3.2 Flash` (`~560B-A25B` Hybrid-Linear KDA+MLA MoE). Closed frontier models (`Claude Opus 5.5`, `Claude Fable 5.2`, `Gemini 4 Hydrogen`, `GPT 6.2 Astra`) remain open in [unverified_hypotheses.md](skills/agent-system-authoring/references/unverified_hypotheses.md).
 
 <details>
 <summary><strong>Evidence tiers (T1 to T5)</strong></summary>
@@ -129,7 +129,7 @@ Every rule in [evidence_ledger.md](skills/agent-system-authoring/references/evid
 </details>
 
 <details>
-<summary><strong>Full benchmark archive (5,238 benchmark calls + 490 eval calls)</strong></summary>
+<summary><strong>Full benchmark archive (6,748 benchmark calls + 490 eval calls)</strong></summary>
 
 | Suite | Model | Calls | Focus | Full report |
 | :--- | :--- | :---: | :--- | :--- |
@@ -139,10 +139,11 @@ Every rule in [evidence_ledger.md](skills/agent-system-authoring/references/evid
 | **Phase D** | `GPT 6 Luna` | 1,030 | Param descriptions, verbosity ceiling, headers, digits, TS vs JSON | [stats_recomputed.md](evidence/stats_recomputed.md) |
 | **Phase E** | `GPT 6 Luna` (`high`) | 880 | Rule density (`5` to `50`), long-context reminders, hard math personas | [stats_recomputed.md](evidence/stats_recomputed.md) |
 | **`H-08` Replication** | `Particle-1` (DeepSeek V4.1 Flash) | 950 | Cross-model replication of `PC-1`, `PC-2`, `PD-1`, `PD-4`, `PD-5` | [stats_recomputed.md](evidence/stats_recomputed.md) |
-| **Phase F Cross-Arch** | `Nemotron 3.5 Lightning` (Mamba-2 SSM) | 1,190 | Cross-architecture replication of `PB-6`, `PC-1`, `PC-2`, `PD-1`, `PD-4`, `PE-2` | [stats_recomputed.md](evidence/stats_recomputed.md) |
+| **Phase F Cross-Arch (Nemotron)** | `Nemotron 3.5 Lightning` (Mamba-2 SSM) | 1,190 | Cross-architecture replication of `PB-6`, `PC-1`, `PC-2`, `PD-1`, `PD-4`, `PE-2` | [stats_recomputed.md](evidence/stats_recomputed.md) |
+| **Phase F Cross-Arch (Ling)** | `Ling 3.2 Flash` (Hybrid-Linear MoE) | 1,510 | Cross-architecture replication of `PB-6`, `PE-1`, `PC-1`, `PC-2`, `PD-1`, `PD-4`, `PD-5` | [stats_recomputed.md](evidence/stats_recomputed.md) |
 | **Eval Suite v4** | `GPT 6 Luna` | 490 | 9-skill triggering, solo precision, objective probes, dual-order judge | [evals_results.md](evidence/evals_results.md) |
 
-All `5,010` Phase B to F and `H-08` runs and all `490` Eval v4 runs completed with `0` gateway errors. Narrative synthesis lives in [empirical_results.md](skills/agent-system-authoring/references/empirical_results.md).
+All `6,520` Phase B to F and `H-08` runs and all `490` Eval v4 runs completed with `0` gateway errors. Narrative synthesis lives in [empirical_results.md](skills/agent-system-authoring/references/empirical_results.md).
 
 </details>
 
