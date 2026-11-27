@@ -97,15 +97,15 @@ This skill gives coding agents a short, tested playbook for authoring system pro
 
 We ran `6,748` benchmark calls across four model families (`GPT 6 Luna`, `Particle-1`, `Nemotron 3.5 Lightning` Mamba-2 SSM, and `Ling 3.2 Flash` Hybrid-Linear MoE) plus `490` skill-eval calls. Repeated runs (`N = 5` per prompt) are averaged at the prompt level before statistical testing to avoid inflated sample counts.
 
-| What we tested | Measured result | Practical rule |
-| :--- | :--- | :--- |
-| **Parameter descriptions** | `3%` to `8%` -> **`100%`** valid (`4/4` models) | Spell out exact formats, spacing, and units; also cut thinking tokens across all 4 families (up to `45%`). |
-| **Assertive tool hype** (`"best"`, `"always use"`) | `0%` to `4%` -> **`94%` to `100%`** hijack (`4/4` models) | Promotional superlatives skew tool routing; keep descriptions factual and neutral. |
-| **Explicit word bans** vs polite hints | `54%` to `73%` -> **`89%` to `100%`** clean (`4/4` models) | Name forbidden words directly (plus compound rules) instead of relying on suggestions. |
-| **Rule count scaling** (`5`/`10` -> `50` rules) | Luna `100%` -> **`49%`–`59%`** (`3.5x` thinking); Ling `98%` -> **`16%`** (`2/2` archs) | Keep active rule lists compact and break large instruction sets into phases. |
-| **In-schema `rationale` field** (thinking off) | `0%` to `37%` -> **`86%` to `100%`** (`3/3` architectures) | Put `rationale` first only when pre-output thinking is off; omit it on reasoning models. |
-| **TypeScript vs JSON Schema in prompts** | **`100%`** accuracy parity, **`49%` to `57%`** fewer prompt tokens (`3/3` models) | Use TypeScript interfaces inside prose prompts; keep JSON Schema for tool APIs. |
-| **Expert personas, spelled digits, `###` headers** | **No accuracy lift** (statistically flat) | Drop honorary expert personas, keep normal numbers, and write plain prose tool docs. |
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="evidence/charts/what_held_up_dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="evidence/charts/what_held_up_light.png">
+    <img alt="Benchmark summary chart comparing baseline and intervention pass rates, prompt token savings, and thinking token savings across 4 model families and 3 architectures" src="evidence/charts/what_held_up_light.png" width="100%">
+  </picture>
+</p>
+
+**Key rules to apply:** spell out exact parameter formats and units (cuts thinking tokens across all 4 families too), keep tool descriptions factual and neutral, name banned words explicitly, break large rule sets into compact phases, put `rationale` first only when pre-output thinking is off, use TypeScript interfaces inside prose prompts (keep JSON Schema for tool APIs), and drop honorary expert personas and `###` tool headers.
 
 **Skill evals:** `1.000` precision and recall on the 9-skill trigger suite (`160` calls), `50/50` solo-skill precision, and `39/40` vs `38/40` on objective authoring probes ([evals_results.md](evidence/evals_results.md)).
 
