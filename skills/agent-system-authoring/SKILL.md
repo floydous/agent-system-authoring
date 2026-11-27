@@ -10,13 +10,13 @@ metadata:
 # Agent System Authoring
 
 ## Overview
-Follow these directives to author production system prompts, multi-provider tool definitions, and portable Agent Skills (`T1` Verified Spec, `T2` Measured Empirically across `GPT 6 Luna`, `Particle-1`, `Nemotron 3.5 Lightning`, and/or `Ling 3.2 Flash`, `T3` Vendor Guidance, `T4` Mechanism, `T5` Pre-2026 Literature, `Methodology`, `Project convention`). Statistical tables and limitations live in [references/evidence_ledger.md](references/evidence_ledger.md) and [references/empirical_results.md](references/empirical_results.md).
+Follow these directives to author production system prompts, multi-provider tool definitions, and portable Agent Skills (`T1` Verified Spec, `T2` Measured Empirically across multiple model architectures, `T3` Vendor Guidance, `T4` Mechanism, `T5` Pre-2026 Literature, `Methodology`, `Project convention`). Tested model scope, statistical tables, and limitations live in [references/evidence_ledger.md](references/evidence_ledger.md) and [references/empirical_results.md](references/empirical_results.md).
 
 ## Authoring Workflow
 Route directly to **Step 1** (system prompts), **Step 2** (tool schemas), **Step 3** (Agent Skills), or **Audit** (read existing artifacts and check [references/debunked_folklore.md](references/debunked_folklore.md) first). If target **provider(s)** (`OpenAI`/`Anthropic`/`Gemini`), **`strict: true`** support, or **reasoning vs. zero-reasoning mode** are not evident from workspace files, confirm them before authoring (`R-TOOL-10`/`R-TOOL-11` wire shapes are mutually incompatible).
 
 ### Step 1: Structure System Prompts & Boundaries
-1. **Minimize active rules (`R-SYS-01`, T2 + T5)**: Split multi-step workflows into focused phases rather than one overloaded rule dump (scaling to `50` behavioral rules cut strict compliance to `58.8%` with `3.5×` thinking on `GPT 6 Luna` and `97.5% -> 16.2%` on `Ling 3.2 Flash`).
+1. **Minimize active rules (`R-SYS-01`, T2 + T5)**: Split multi-step workflows into focused phases rather than one overloaded rule dump; high concurrent rule counts degrade strict compliance and inflate reasoning tokens.
 2. **Isolate untrusted data (`R-SYS-03`, T3)**: Enforce `Platform > Developer > User > Tool/Untrusted Data`; wrap CRM tickets, PDFs, or web text in data delimiters and deny authority to imperatives inside them.
 3. **Place boundaries purposefully (`R-SYS-02`, T5)**: Put core invariants first, strict output rules near the end, and compact retrieved data in the middle (explicit boundary-vs-recall trade-off).
 4. **Use clean delimiters (`R-SYS-08`, T3)**: Default to flat Markdown `###` headers (or XML tags for Claude); never use literal `[A|B|C]` brackets when a single concrete value is expected.
