@@ -24,7 +24,7 @@
     <td align="center" width="190"><h3>8,028</h3><b>Benchmark runs</b><br><sub>4 model families, 3 architectures</sub></td>
     <td align="center" width="190"><h3>28</h3><b>Tagged rules</b><br><sub>every rule linked to its proof</sub></td>
     <td align="center" width="190"><h3>3</h3><b>API providers</b><br><sub>OpenAI, Anthropic, Gemini</sub></td>
-    <td align="center" width="190"><h3>232.5 KB</h3><b>Skill install</b><br><sub>55-line SKILL.md, 14 files</sub></td>
+    <td align="center" width="190"><h3>241.8 KB</h3><b>Skill install</b><br><sub>56-line SKILL.md, 14 files</sub></td>
   </tr>
 </table>
 
@@ -107,7 +107,7 @@ We ran `8,028` benchmark calls across four model families (`GPT 6 Luna`, `Partic
 
 **Key rules to apply:** spell out exact parameter formats and units (cuts thinking tokens across all 4 families too), keep tool descriptions factual and neutral, prune bloated tool catalogs, name banned words explicitly, break large rule sets into compact phases, put `rationale` first only when pre-output thinking is off, use TypeScript interfaces inside prose prompts (keep JSON Schema for tool APIs), and drop CoT directives, superfluous few-shot examples, honorary expert personas, and `###` tool headers.
 
-**Skill evals:** `1.000` precision and recall on the 9-skill trigger suite (`160` calls), `50/50` solo-skill precision, and `39/40` vs `38/40` on objective authoring probes ([evals_results.md](evidence/evals_results.md)).
+**Skill evals:** `1.000` precision and recall on the 9-skill trigger suite (`160` calls), `50/50` solo-skill precision, and `39/40` vs `38/40` on objective authoring probes ([evals_results.md](evidence/evals_results.md)). On real multi-turn coding-agent tasks (`40` isolated `pi v1.6.0` sessions on `GPT 6 Luna`, deterministic workspace grading), the skill lifted multi-provider tool repair **`42% → 78%`** (`p = 0.0079`, `-33%` turns, `-25%` tokens, `-34%` wall time) and skill-package repair **`58% → 76%`** (`p = 0.0317`), with an A/B-verified Step-3 fix lifting strict `10/10` pass rate **`0/5 → 5/5`** (`p = 0.0079`, `-11%` tokens); frontier prompt refactoring was already near ceiling (`88%` vs `86%`, `p = 1.0000`).
 
 > [!NOTE]
 > Live runs tested four model families across three architectures: `GPT 6 Luna`, `Particle-1` (DeepSeek V4.1 Flash lineage), `Nemotron 3.5 Lightning` (`30B-A3B` Mamba-2 SSM hybrid), and `Ling 3.2 Flash` (`~560B-A25B` Hybrid-Linear KDA+MLA MoE). Closed frontier models (`Claude Opus 5.5`, `Claude Fable 5.2`, `Gemini 4 Hydrogen`, `GPT 6.2 Astra`) remain open in [unverified_hypotheses.md](skills/agent-system-authoring/references/unverified_hypotheses.md).
@@ -129,7 +129,7 @@ Every rule in [evidence_ledger.md](skills/agent-system-authoring/references/evid
 </details>
 
 <details>
-<summary><strong>Full benchmark archive (8,028 benchmark calls + 490 eval calls)</strong></summary>
+<summary><strong>Full benchmark archive (8,028 benchmark calls + 490 eval calls + 40 real-agent Pi sessions)</strong></summary>
 
 | Suite | Model | Calls | Focus | Full report |
 | :--- | :--- | :---: | :--- | :--- |
@@ -143,8 +143,9 @@ Every rule in [evidence_ledger.md](skills/agent-system-authoring/references/evid
 | **Phase F Cross-Arch (Ling)** | `Ling 3.2 Flash` (Hybrid-Linear MoE) | 1,510 | Cross-architecture replication of `PB-6`, `PE-1`, `PC-1`, `PC-2`, `PD-1`, `PD-4`, `PD-5` | [stats_recomputed.md](evidence/stats_recomputed.md) |
 | **Phase G Stress & Untouched Rules** | `GPT 6 Luna` | 1,280 | Tool catalog scaling (`PG-1`), CoT on reasoning (`PG-2`), conflicting few-shots (`PG-3`), 16-turn memory (`PG-4`), 67k context (`PG-5`) | [stats_recomputed.md](evidence/stats_recomputed.md) |
 | **Eval Suite v4** | `GPT 6 Luna` | 490 | 9-skill triggering, solo precision, objective probes, dual-order judge | [evals_results.md](evidence/evals_results.md) |
+| **Pi Real-Agent Evals** | `GPT 6 Luna` (`pi v1.6.0`) | 40 sessions | Multi-turn broken-repo repair (`N = 5` × 3 repos) + paired A/B Step-3 fix | [stats_recomputed.md](evidence/stats_recomputed.md) |
 
-All `7,800` Phase B to G and `H-08` runs and all `490` Eval v4 runs completed with `0` gateway errors. Narrative synthesis lives in [empirical_results.md](skills/agent-system-authoring/references/empirical_results.md).
+All `7,800` Phase B to G and `H-08` runs, all `490` Eval v4 runs, and all `40` real-agent Pi sessions completed with `0` errors. Narrative synthesis lives in [empirical_results.md](skills/agent-system-authoring/references/empirical_results.md).
 
 </details>
 

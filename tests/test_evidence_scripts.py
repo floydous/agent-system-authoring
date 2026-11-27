@@ -351,5 +351,75 @@ class TestPhaseGHarnessDesign(unittest.TestCase):
             self.assertEqual(r["metrics"]["strict_all"], 1.0)
 
 
+class TestPiAgentEvalIntegrity(unittest.TestCase):
+    def test_pristine_fixtures_fail_intended_defects(self) -> None:
+        import pi_agent_eval as pe
+        import tempfile
+        import shutil
+
+        expected_initial_pass = {
+            "multi_provider_tools": {"workers_preserved"},
+            "broken_skill_repair": {"domain_content_preserved"},
+            "prompt_hardening_refactor": {"business_reqs_preserved", "loader_valid_python"},
+        }
+        for tid, exp_pass in expected_initial_pass.items():
+            work = Path(tempfile.mkdtemp(prefix=f"test_pi_{tid}_"))
+            try:
+                pe.TASKS[tid]["builder"](work)
+                res = pe.TASKS[tid]["grader"](work)
+                passed = {k for k, (ok, _) in res.items() if ok}
+                self.assertEqual(passed, exp_pass, msg=f"Unexpected pristine passes on {tid}: {passed}")
+            finally:
+                shutil.rmtree(work, ignore_errors=True)
+
+    def test_parse_pi_jsonl_sections_isolation_and_skill_read_scoping(self) -> None:
+        import pi_agent_eval as pe
+
+        skill_p = REPO_ROOT / "skills" / "agent-system-authoring"
+        # Baseline reading fixture SKILL.md must NOT count as skill_read
+        base_jsonl = "\n".join([
+            json.dumps({"type": "message_end", "message": {"role": "system", "content": "", "sections": {"preamble": "pi"}}}),
+            json.dumps({"type": "message_end", "message": {"role": "assistant", "content": [{"type": "toolCall", "name": "read", "arguments": {"path": "Data_Pipeline_Audit/SKILL.md"}}], "usage": {"input": 100, "output": 10, "totalTokens": 110}}}),
+            json.dumps({"type": "turn_end"}),
+        ])
+        tb = pe.parse_pi_jsonl(base_jsonl, None)
+        self.assertTrue(tb["isolation_ok"])
+        self.assertFalse(tb["skill_read"])
+        self.assertEqual(tb["turns"], 1)
+
+        # Treatment reading injected SKILL.md MUST count as skill_read
+        treat_jsonl = "\n".join([
+            json.dumps({"type": "message_end", "message": {"role": "system", "content": "", "sections": {"skills": "agent-system-authoring"}}}),
+            json.dumps({"type": "message_end", "message": {"role": "assistant", "content": [{"type": "toolCall", "name": "read", "arguments": {"path": str(skill_p / "SKILL.md")}}], "usage": {"input": 200, "output": 15, "totalTokens": 215}}}),
+            json.dumps({"type": "turn_end"}),
+        ])
+        tt = pe.parse_pi_jsonl(treat_jsonl, skill_p)
+        self.assertTrue(tt["isolation_ok"])
+        self.assertTrue(tt["skill_read"])
+
+    def test_pi_raw_traces_integrity_and_zero_leaks(self) -> None:
+        pi_dir = REPO_ROOT / "evidence" / "raw_pi_agent_eval"
+        main_p = pi_dir / "results_pi_luna_n5.jsonl"
+        ab_p = pi_dir / "results_pi_ab_step3_fix.jsonl"
+        main_recs = [json.loads(ln) for ln in main_p.read_text(encoding="utf-8").splitlines() if ln.strip()]
+        ab_recs = [json.loads(ln) for ln in ab_p.read_text(encoding="utf-8").splitlines() if ln.strip()]
+        self.assertEqual(len(main_recs), 30)
+        self.assertEqual(len(ab_recs), 10)
+        for p in (main_p, ab_p):
+            raw = p.read_bytes()
+            self.assertNotIn(b"\r\n", raw)
+            txt = raw.decode("utf-8")
+            self.assertNotIn("Users/brat", txt)
+            self.assertNotIn("Users\\brat", txt)
+            self.assertNotIn("10.0.0.", txt)
+        for r in main_recs + ab_recs:
+            self.assertIsNone(r["agent_error"])
+            self.assertTrue(r["isolation_ok"])
+            self.assertEqual(r["passed_checks"], sum(1 for v in r["checks"].values() if v["ok"]))
+            self.assertEqual(r["strict_pass"], r["passed_checks"] == r["total_checks"])
+        aft = [r for r in ab_recs if r["variant"] == "after"]
+        self.assertEqual(sum(1 for r in aft if r["strict_pass"]), 5)
+
+
 if __name__ == "__main__":
     unittest.main()

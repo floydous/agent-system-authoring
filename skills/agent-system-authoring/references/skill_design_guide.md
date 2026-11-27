@@ -78,11 +78,44 @@ An **Agent Skill** is a self-contained directory containing a `SKILL.md` entrypo
 
 ---
 
-## Evaluation Design (`evals/evals.json` — Project Convention)
+## Operational Workflow Patterns (`Project convention`)
+Spec conformance (`R-SKILL-01`–`R-SKILL-06`) ensures a skill **loads cleanly**, while operational workflow patterns ensure agents **execute reliably** on real multi-step tasks. Apply only the patterns warranted by the skill's complexity (keep lightweight skills minimal):
+
+1. **Mode Routing & Progressive Entrypoints**:
+   - Place a short routing block near the top of `SKILL.md` when a skill supports distinct modes (e.g., quick single-file fix vs. full-project workflow, or scratch authoring vs. auditing).
+   - Keep the common fast path inline in `SKILL.md` and send deep multi-stage workflows to a dedicated one-hop `references/<workflow>.md` guide so activation context stays within `R-SKILL-02`.
+2. **Fact-Finding vs. Human Stop Gates**:
+   - Explicitly separate **facts** the agent must discover via workspace inspection/tools from **decisions** the user owns (product scope, compatibility bars, destructive mutations).
+   - For multi-decision tasks, interview in compact frontier rounds: number each open decision, propose a recommended default so brief confirmation accepts it, and defer dependent questions until prerequisites settle.
+   - Insert hard stop gates before irreversible actions (e.g., *"Plan, then stop — wait for approval"* or *"Ask before modifying production source files"*).
+3. **Anti-Shortcut & Verification-Integrity Invariants**:
+   - Explicitly prohibit agents from gaming verification checks: never edit recorded test fixtures or golden outputs to force a pass, never widen numeric/matching tolerances to hide failures without user approval, never drop assertions to make a suite green, and never hardcode expected test results into runtime code.
+4. **Stall / Loop Circuit Breakers**:
+   - Define an explicit retry cap (e.g., `2–3` consecutive edits that yield zero progress on the same failing check). When hit, stop editing, show the exact remaining failure/diff, and escalate to the user rather than burning tokens in an open-ended loop.
+5. **Cross-Session State & Correction Capture (Long-Horizon Skills)**:
+   - For workflows that span multiple sessions or subagents, define lightweight pointer-not-copy artifacts in the target project (e.g., a status map, append-only architectural decisions, a session handoff, and a one-sentence learned-corrections list appended immediately whenever the user corrects behavior) so new sessions resume accurately without duplicating prose or repeating past mistakes.
+6. **Objective Done Criteria & Reporting Contract**:
+   - Anchor completion to a deterministic verification command (`exit code 0`) rather than agent self-report, and specify a fixed closing report (what changed, exact verification results, and remaining risks or unverified assumptions).
+
+---
+
+## Evaluation Design & CI Drift Checks (`Project convention`)
+Combine static drift tests, single-turn trigger/quality evals, and (for tool-driving skills) end-to-end headless agent A/B tests:
+
+### 1. Single-Turn Trigger & Comparative Suite (`evals/evals.json`)
 Consistent with `agentskills.io` description-optimization guidance, pair three test types inside `evals/evals.json`:
 1. **`trigger_positive`**: Realistic prompts that should activate the skill without naming it explicitly.
 2. **`trigger_negative`**: Near-miss prompts sharing vocabulary with the domain (e.g., running SQL directly rather than designing a SQL tool schema) that should **not** trigger activation.
 3. **`comparative`**: Multi-dimensional rubric comparisons evaluating skill-guided output against an unguided baseline across `N >= 5` iterations (`R-SYS-10`). Note: treat unexecuted `evals.json` definitions as test specifications rather than completed benchmark proof.
+
+### 2. CLI & Command-Drift CI Checks
+When a skill instructs agents to invoke bundled scripts or an external CLI, stale flags or renamed subcommands send every run down a dead end. Add an offline CI test that extracts fenced code blocks and inline backtick spans from `SKILL.md` and `references/*.md` and verifies every referenced command/flag against the actual CLI `--help` or `argparse` schema.
+
+### 3. End-to-End Headless Agent A/B Evals
+Single-turn completions measure prompt quality, not multi-turn tool execution. For workflow-heavy skills, add an A/B harness that runs two skill directories (`--variant current=...` vs. `--variant draft=...`) inside fresh temporary fixture copies using a headless coding agent:
+- **Deterministic Grading**: Score each run strictly by running an objective verifier/gate (`exit code 0`) on the workspace the agent produced — not by what the agent claims in its final message.
+- **Efficiency Telemetry**: Log pass rate alongside **turns**, **wall-clock seconds**, and **token / USD cost** across `N >= 5` runs (`R-SYS-10`), since wording edits often change turn count and cost even when pass rates tie.
+- **Global-Install Isolation**: Before running A/B comparisons, uninstall or disable any user-level global copy of the skill (e.g., `~/.claude/skills/<name>` or global agent skill dirs) so both variants do not silently load the global install instead of the isolated workspace variant.
 
 ---
 
@@ -90,6 +123,7 @@ Consistent with `agentskills.io` description-optimization guidance, pair three t
 1. Verify `name` (`kebab-case`, `1–64` chars) matches parent folder name (`R-SKILL-03`, `T1`).
 2. Confirm `description` (`1–1024` chars) states what + when in third person (`R-SKILL-03`, `T1`/`T3`).
 3. Keep `SKILL.md` `< 500` lines and `< 5000` tokens (`R-SKILL-02`, `T1`), linking reference files directly one level deep (`R-SKILL-04`, `T1`).
-4. Confirm every script declares PEP 723 metadata (`R-SKILL-06`, `T1`) and uses UTF-8 / `pathlib.Path`.
-5. Remove all secrets, `__pycache__/`, `.pytest_cache/`, and `mock_*` files (`R-SKILL-05`, `Project convention`).
-6. Run `python scripts/verify_skill.py .` (exit code `0`) and confirm `evals/evals.json` validity (noting whether evals have been executed).
+4. Confirm operational clarity: mode routing (if multi-mode), inspect-first fact gathering, explicit stop gates, anti-shortcut invariants, stall circuit breaker, and objective done criteria (`Project convention`).
+5. Confirm every script declares PEP 723 metadata (`R-SKILL-06`, `T1`) and uses UTF-8 / `pathlib.Path`, and verify referenced CLI flags match actual `--help` / parser definitions.
+6. Remove all secrets, `__pycache__/`, `.pytest_cache/`, and `mock_*` files (`R-SKILL-05`, `Project convention`).
+7. Run `python scripts/verify_skill.py .` (exit code `0`) and confirm `evals/evals.json` validity (and isolate global skill installs before running headless agent A/B evals).
