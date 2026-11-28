@@ -1683,7 +1683,7 @@ class ExperimentRunner:
                     )
 
                     with self.log_lock:
-                        with open(log_path, "a", encoding="utf-8") as f_out:
+                        with open(log_path, "a", encoding="utf-8", newline="\n") as f_out:
                             f_out.write(record.to_json_line() + "\n")
                             f_out.flush()
 

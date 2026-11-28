@@ -29,7 +29,7 @@ Configured solely via environment variables:
   - TARGET_MODEL
 
 Writes sanitized JSONL records (stripped of auth headers & gateway URLs) to:
-  - evidence/raw_phase_f_<prefix>/results_<PREFIX>-<SUITE>.jsonl
+  - evidence/raw/phase_f_<prefix>/results_<PREFIX>-<SUITE>.jsonl
 """
 
 from __future__ import annotations

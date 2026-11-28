@@ -14,5 +14,5 @@
 {{untrusted_context}}
 </untrusted_data>
 
-### Trailing Reminder
+### Trailing Reminder (Optional — use for demanding tasks or long multi-turn loops; omit for short single-turn prompts)
 Output only the requested deliverable matching the exact format specified in System Invariants and Operational Rules.

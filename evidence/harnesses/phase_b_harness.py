@@ -12,7 +12,7 @@ chat completions endpoint configured solely via environment variables:
   - TARGET_MODEL (provenance traces ran on GPT 6 Luna)
 
 Provenance script: writes raw records (excluding auth headers and gateway URLs)
-to evidence/raw_phase_b/results_<SUITE>.jsonl.
+to evidence/raw/phase_b/results_<SUITE>.jsonl.
 """
 
 from __future__ import annotations
@@ -717,7 +717,7 @@ def run_suite(cfg: RunConfig, suite_id: str, out_dir: Path, run_id: str) -> Tupl
             "metrics": metrics,
         }
 
-    with out_file.open("w", encoding="utf-8") as fh:
+    with out_file.open("w", encoding="utf-8", newline="\n") as fh:
         with ThreadPoolExecutor(max_workers=cfg.concurrency) as pool:
             futs = [pool.submit(worker, it) for it in items]
             for fut in as_completed(futs):

@@ -6,7 +6,7 @@
 
 Executes powered, deconfounded, multi-iteration (N = 5 runs per prompt)
 experiments on GPT 6 Luna across the four core open hypotheses in
-references/unverified_hypotheses.md:
+evidence/unverified_hypotheses.md:
 - PD-1 (H-02a / R-TOOL-05): TS-2 N=5 replication (15 prompts x 2 arms x 5 = 150 calls)
 - PD-2 (H-02b / Verbosity): Parameter description verbosity/dilution curve across
   15 / 50 / 120 / 250 tokens per param on 6 non-standard rules (16 x 4 x 5 = 320 calls)
@@ -23,7 +23,7 @@ Configured solely via environment variables:
   - TARGET_MODEL (provenance traces ran on GPT 6 Luna)
 
 Writes raw records (stripped of auth headers and gateway URLs) to
-evidence/raw_phase_d/results_<SUITE>.jsonl.
+evidence/raw/phase_d/results_<SUITE>.jsonl.
 """
 
 from __future__ import annotations
@@ -1038,7 +1038,7 @@ def main() -> int:
     parser.add_argument("--concurrency", type=int, default=DEFAULT_CONCURRENCY)
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--limit-prompts", type=int, default=None, help="Optional cap on prompts per suite (for smoke calibration).")
-    parser.add_argument("--out-dir", default=None, help="Optional output directory (defaults to evidence/raw_phase_d).")
+    parser.add_argument("--out-dir", default=None, help="Optional output directory (defaults to evidence/raw/phase_d).")
     args = parser.parse_args()
 
     gw = os.environ.get("GATEWAY_URL", "").strip()

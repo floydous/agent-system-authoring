@@ -1,7 +1,7 @@
 # Primary Source Verification Log
 
-**Audit Date**: 2026-11-22 (with 2026-11-23 JSON Schema validation-keyword addenda)  
-**Purpose**: Records primary-source verification for every specification, vendor document, and peer-reviewed paper cited in `agent-system-authoring`. Under the repository evidence policy, quantitative metrics may appear in the skill only if recomputed from `evidence/` traces (`raw/`, `raw_phase_b/`, `raw_phase_c/`, `raw_evals/`) or present in retrieved source text below.
+**Audit Date**: 2026-11-22 (with 2026-11-23 JSON Schema validation-keyword addenda, 2026-11-26 Gemini `parametersJsonSchema` addendum, and 2026-11-27 gateway model-slug provenance record)  
+**Purpose**: Records primary-source verification for every specification, vendor document, and peer-reviewed paper cited in `agent-system-authoring`. Under the repository evidence policy, quantitative metrics may appear in the skill only if recomputed from `evidence/raw/` traces (`phase_a/`, `phase_b/`, `phase_c/`, `phase_d/`, `phase_e/`, `h08_particle1/`, `phase_f_nemo/`, `phase_f_ling/`, `phase_g_luna/`, `evals_v4/`, `pi_agent_eval/`) or present in retrieved source text below.
 
 ---
 
@@ -141,3 +141,16 @@ Retrieved via live web extraction against `https://arxiv.org/abs/<id>` and web s
 | `arXiv:2307.16789` | *ToolLLM* — Yujia Qin, Shihao Liang, Yining Ye et al. (Submitted 31 Jul 2023, revised 3 Oct 2023; ICLR 2024) | ToolBench (`16,464` RESTful APIs across `49` categories) with a neural API retriever for large toolsets. | Exact match verified. |
 | `arXiv:2601.07525` | *Thinking Before Constraining: A Unified Decoding Framework for Large Language Models* — Ngoc Trinh Hung Nguyen, Alonso Silva, Laith Zumot, Liubov Tupikina, Armen Aghasaryan, Mehwish Alam (Submitted **12 Jan 2026**, revised 28 May 2026) | Unconstrained reasoning before constrained structured decoding via trigger token; up to `27%` accuracy gain over natural generation. | Fixed citation date `"May 2026"` -> **`Jan 2026`**. |
 | `arXiv:2408.02442` | *Let Me Speak Freely?* — Zhi Rui Tam, Cheng-Kuang Wu, Yi-Lin Tsai, Chieh-Yen Lin, Hung-yi Lee, Yun-Nung Chen (Submitted 5 Aug 2024, revised 14 Oct 2024; EMNLP 2024) | Significant decline in reasoning abilities under stricter format constraints vs free-form generation. | Removed unverified `11 open models` unless noted qualitatively. |
+
+---
+
+## 4. Empirical Benchmark Gateway Slugs & Model-Card Provenance (2026-11-27)
+
+Every live JSONL record in `evidence/raw/` (except legacy Phase C v1.1.0 records noted in `evidence/README.md`) records the exact gateway/router model slug used during execution. Architecture, lineage, and parameter-count descriptions cited in router catalogs are **gateway metadata**, not primary-source model-card snapshots retrieved in Sections 1–3:
+
+| Display Name Used in Reports | Exact Gateway / Router Slug in Traces | Trace Scope (`8,028` Benchmark + `490` Eval v4 + `55` Pi) | Provenance Note |
+| :--- | :--- | :--- | :--- |
+| `GPT 6 Luna` | `cx/gpt-6-luna` | Phases A–E (`3,098`) + Phase G (`1,280`) + Eval v4 (`490`) + Pi (`55` sessions) | Model name `gpt-6-luna` also appears in retrieved OpenAI `reasoning.md` (Section 2.4). |
+| `Particle-1` | `openrouter/particle-ai/particle-1:free` | `H-08` replication (`950`) | Router slug verified directly in `raw/h08_particle1/results_H08-*.jsonl`; vendor/router lineage tag ("DeepSeek V4.1 Flash lineage") is unverified gateway metadata. |
+| `Nemotron 3.5 Lightning` | `openrouter/nvidia/nemotron-3.5-lightning:free` | Phase F Nemotron (`1,190`) | Router slug verified directly in `raw/phase_f_nemo/results_NEMO-*.jsonl`; architecture/size tag (`30B-A3B` Mamba-2 SSM hybrid) is unverified gateway/catalog metadata. |
+| `Ling 3.2 Flash` | `openrouter/inclusionai/ling-3.2-flash:free` | Phase F Ling (`1,510`) | Router slug verified directly in `raw/phase_f_ling/results_LING-*.jsonl`; architecture/size tag (`~560B-A25B` Hybrid-Linear KDA+MLA MoE) is unverified gateway/catalog metadata. |

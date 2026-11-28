@@ -4,6 +4,7 @@
 - **Iterations**: `N = 5` runs per prompt
 - **Unit-of-Analysis Hygiene**: All hypothesis tests operate strictly on prompt/task-level means (`df = num_tasks - 1`).
 - **Context Disclosure**: Part B `with_skill` runs simulate progressive disclosure by supplying `SKILL.md` plus the single task-matched reference guide and default starter template.
+- **Provenance & Rescore Scope**: Executed on `2026-11-23` against the pre-slim `v2.0.0` skill package. `comp_07` rows in this trace used the legacy `4650c`/`17d` arithmetic fixture (`run_evals.py` was later hardened to `8325c`/`18d` for future live runs). `--rescore-only` deterministically re-verifies `210` trigger JSON outputs, `100` generation lengths, `10` offline `comp_09` evaluations from `comparative_generation` artifacts, sub-metric consistency on `comp_01`/`comp_03`/`comp_04`/`comp_07`, and judge delta invariants across `100` judge rows (`80/80` downstream probes and `100/100` judge rows in this `2026-11-23` trace predate raw `response_text` logging).
 - **Raw Traces**: `evidence/raw/evals_v4/results_evals_v4.jsonl` (`490` records including `model`, sanitized `request_payload`, `reasoning_tokens`, and `total_tokens`)
 
 ## 1. Hard Triggering Accuracy (9-Skill Registry & Solo-Skill Stress Test, Reason-First Routing)
@@ -61,7 +62,7 @@
 | `comp_04_legal_pdf_injection_prompt` | Vendor PDF injection + 3 clauses | 5/5 (100%) | 5/5 (100%) | **+0.00** |
 | `comp_05_disambiguate_two_support_tools` | OpenAI wire shape + SQL vs policy KB routing | 5/5 (100%) | 5/5 (100%) | **+0.00** |
 | `comp_06_logistics_custom_format_tool` | OpenAI strict wire + exact no-space `lat,lon` call | 5/5 (100%) | 5/5 (100%) | **+0.00** |
-| `comp_07_non_reasoning_refund_tool` | Zero-reasoning arithmetic (`4650c`, `17d`, valid dates) | 5/5 (100%) | 5/5 (100%) | **+0.00** |
+| `comp_07_non_reasoning_refund_tool` | Zero-reasoning arithmetic (`4650c`, `17d`, valid dates; legacy 2026-11-23 trace) | 5/5 (100%) | 5/5 (100%) | **+0.00** |
 | `comp_08_fix_gamed_search_tools` | OpenAI wire shape + rebalanced PDF vs wiki routing | 5/5 (100%) | 5/5 (100%) | **+0.00** |
 | `comp_09_skill_package_data_auditing` | T1 `agentskills.io` + PEP 723 + general hygiene | 5/5 (100%) | 5/5 (100%) | **+0.00** |
 

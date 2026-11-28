@@ -57,7 +57,7 @@ An **Agent Skill** is a self-contained directory containing a `SKILL.md` entrypo
 ### R-SKILL-05: Packaging Hygiene (`Project convention`)
 - **Evidence Tier**: **Project convention**
 - **Convention Rules**:
-  Keep distributed skill packages focused on runtime execution, documentation, and inspectable evidence rather than development residue:
+  Keep distributed skill packages focused on runtime execution and concise authoring documentation rather than development residue:
   - **Omit Private Secrets**: Never bundle API keys, bearer tokens, passwords, or internal private endpoints.
   - **Omit Transient Caches**: Clean `__pycache__/`, `.pytest_cache/`, `.mypy_cache/`, `.DS_Store`, and temporary scratch artifacts before shipping.
   - **Omit Development Test Runners & Synthetic/Mock Dumps**: Keep `tests/`, `pytest.ini`, and `mock_*` files out of the skill bundle. Keep heavy empirical traces and provenance scripts isolated in a separate repo-root `evidence/` archive rather than inside the installable `skills/<skill-name>/` package.
@@ -126,4 +126,4 @@ Single-turn completions measure prompt quality, not multi-turn tool execution. F
 4. Confirm operational clarity: mode routing (if multi-mode), inspect-first fact gathering, explicit stop gates, anti-shortcut invariants, stall circuit breaker, and objective done criteria (`Project convention`).
 5. Confirm every script declares PEP 723 metadata (`R-SKILL-06`, `T1`) and uses UTF-8 / `pathlib.Path`, and verify referenced CLI flags match actual `--help` / parser definitions.
 6. Remove all secrets, `__pycache__/`, `.pytest_cache/`, and `mock_*` files (`R-SKILL-05`, `Project convention`).
-7. Run `python scripts/verify_skill.py .` (exit code `0`) and confirm `evals/evals.json` validity (and isolate global skill installs before running headless agent A/B evals).
+7. Run `python -B <skill-dir>/scripts/verify_skill.py --generic <target-skill-dir>` (exit code `0`) and confirm `evals/evals.json` validity (and isolate global skill installs before running headless agent A/B evals).

@@ -19,7 +19,7 @@ Configured solely via environment variables:
   - TARGET_MODEL (e.g., openrouter/particle-ai/particle-1:free)
 
 Writes raw records (stripped of auth headers and gateway URLs) to
-evidence/raw_h08_particle1/results_<SUITE>.jsonl (or --out-dir).
+evidence/raw/h08_particle1/results_<SUITE>.jsonl (or --out-dir).
 """
 
 from __future__ import annotations

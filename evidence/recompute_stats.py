@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 from collections import defaultdict
+import gzip
 from itertools import combinations
 import json
 import math
@@ -217,8 +218,12 @@ def load_records(directory: Path, pattern: str) -> Dict[str, List[Dict[str, Any]
     grouped: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     if not directory.exists():
         return {}
-    for jsonl_path in sorted(directory.glob(pattern)):
-        with jsonl_path.open("r", encoding="utf-8") as fh:
+    paths: List[Path] = sorted(directory.glob(pattern))
+    if not pattern.endswith(".gz"):
+        paths.extend(sorted(directory.glob(pattern + ".gz")))
+    for jsonl_path in sorted(set(paths)):
+        opener = gzip.open if jsonl_path.suffix == ".gz" else Path.open
+        with opener(jsonl_path, "rt", encoding="utf-8") if jsonl_path.suffix == ".gz" else jsonl_path.open("r", encoding="utf-8") as fh:
             for line in fh:
                 line = line.strip()
                 if not line:
@@ -425,7 +430,7 @@ def render_suite_table(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Recompute Phase A/B/C statistics from raw JSONL traces.")
+    parser = argparse.ArgumentParser(description="Recompute Phases A-G, H-08 & Pi statistics from raw JSONL traces.")
     parser.add_argument(
         "--check",
         action="store_true",
@@ -500,16 +505,17 @@ def main() -> int:
     lines: List[str] = [
         "# Recomputed Statistical Summary (Phases A–G & H-08 Cross-Architecture Replication)",
         "",
-        f"- **Total Benchmark Traces**: **{grand_total:,} records** (`{total_a + total_b + total_c + total_d + total_e + total_g_luna:,}` on `GPT 6 Luna` + `{total_h08:,}` on `Particle-1` / DeepSeek V4.1 Flash + `{total_f_nemo:,}` on `Nemotron 3.5 Lightning` / `30B-A3B` Mamba-2 SSM + `{total_f_ling:,}` on `Ling 3.2 Flash` / `~560B-A25B` Hybrid-Linear KDA+MLA MoE)",
+        f"- **Total Benchmark Traces**: **{grand_total:,} records** (`{total_a + total_b + total_c + total_d + total_e + total_g_luna:,}` on `GPT 6 Luna` + `{total_h08:,}` on `Particle-1` + `{total_f_nemo:,}` on `Nemotron 3.5 Lightning` + `{total_f_ling:,}` on `Ling 3.2 Flash`; see `evidence/source_checks.md` for gateway slugs & model-card provenance)",
         "- **Unit-of-Analysis Policy**: Zero pseudoreplication — repeated runs (`N = 5` per prompt) are aggregated into prompt-level means (`n = P` independent prompts) before inferential testing (paired *t*-test with `df = P - 1` and exact two-sided paired sign test). Pooled run counts and `TARa@K` are reported descriptively.",
+        "- **Multiplicity & Scope Caveat**: All reported `p`-values across `80+` suite/metric contrasts are nominal (unadjusted for family-wise error or FDR). Primary T2 effects remain strong under conservative correction (`p <= 1e-4` to `1e-33`), whereas borderline nominal results (`0.01 < p < 0.05`, e.g., `LING-PD4` `strict_all` `p=0.0179`, `LUNA-PG5` refresh `rtok` `p=0.0222`, `LUNA-PG4` latency `p=0.0290`, `PD-3` latency `p=0.0149`, and Pi `multi_provider_tools` post-slim vs. baseline `p=0.0476`) should be treated as exploratory. Pi real-agent permutation tests evaluate `N = 5` stochastic trials per `P = 1` fixed repository fixture per task, measuring run-to-run variance on that fixture rather than cross-repository generalization.",
         f"- **Phase A Traces**: `evidence/raw/phase_a/` ({len(grouped_a)} suites, {total_a} records, 1 run/prompt, GPT 6 Luna)",
         f"- **Phase B Traces**: `evidence/raw/phase_b/` ({len(grouped_b)} suites, {total_b} records, 5 runs/prompt, GPT 6 Luna, gateway errors={err_b})",
         f"- **Phase C Traces**: `evidence/raw/phase_c/` ({len(grouped_c)} suites, {total_c} records, 5 runs/prompt, GPT 6 Luna, gateway errors={err_c})",
         f"- **Phase D Traces**: `evidence/raw/phase_d/` ({len(grouped_d)} suites, {total_d} records, 5 runs/prompt, GPT 6 Luna, gateway errors={err_d})",
         f"- **Phase E Traces**: `evidence/raw/phase_e/` ({len(grouped_e)} suites, {total_e} records, 5 runs/prompt, GPT 6 Luna high, gateway errors={err_e})",
-        f"- **H-08 Particle-1 Traces**: `evidence/raw/h08_particle1/` ({len(grouped_h08)} suites, {total_h08} records, 5 runs/prompt, Particle-1 / DeepSeek V4.1 Flash, gateway errors={err_h08})",
-        f"- **Phase F Nemotron Traces**: `evidence/raw/phase_f_nemo/` ({len(grouped_f_nemo)} suites, {total_f_nemo} records, 5 runs/prompt, Nemotron 3.5 Lightning 30B-A3B Mamba-2 SSM, gateway errors={err_f_nemo})",
-        f"- **Phase F Ling Traces**: `evidence/raw/phase_f_ling/` ({len(grouped_f_ling)} suites, {total_f_ling} records, 5 runs/prompt, Ling 3.2 Flash ~560B-A25B Hybrid-Linear KDA+MLA MoE, gateway errors={err_f_ling})",
+        f"- **H-08 Particle-1 Traces**: `evidence/raw/h08_particle1/` ({len(grouped_h08)} suites, {total_h08} records, 5 runs/prompt, Particle-1, gateway errors={err_h08})",
+        f"- **Phase F Nemotron Traces**: `evidence/raw/phase_f_nemo/` ({len(grouped_f_nemo)} suites, {total_f_nemo} records, 5 runs/prompt, Nemotron 3.5 Lightning, gateway errors={err_f_nemo})",
+        f"- **Phase F Ling Traces**: `evidence/raw/phase_f_ling/` ({len(grouped_f_ling)} suites, {total_f_ling} records, 5 runs/prompt, Ling 3.2 Flash, gateway errors={err_f_ling})",
         f"- **Phase G Luna Traces**: `evidence/raw/phase_g_luna/` ({len(grouped_g_luna)} suites, {total_g_luna} records, 5 runs/prompt, GPT 6 Luna: PG-1 to PG-5, gateway errors={err_g_luna})",
         f"- **Pi Real-Agent Multi-Turn Traces**: `evidence/raw/pi_agent_eval/` ({pi_total} live `pi v1.6.0` sessions on GPT 6 Luna, errors={pi_errors}, isolation_verified={pi_iso_ok}/{pi_total})",
         "- **Generated By**: `evidence/recompute_stats.py` (offline stdlib-only statistical verification)",
@@ -577,14 +583,21 @@ def main() -> int:
             by_c = defaultdict(list)
             for r in grouped_g_luna["LUNA-PG4"]:
                 by_c[r["condition"]].append(r)
-            so_rt = statistics.mean(float(r.get("reasoning_tokens") or 0.0) for r in by_c["system_only"])
-            tr_rt = statistics.mean(float(r.get("reasoning_tokens") or 0.0) for r in by_c["trailing_reminder"])
+            so_recs, tr_recs = by_c["system_only"], by_c["trailing_reminder"]
+            n_so, n_tr = len(so_recs), len(tr_recs)
+            pg4_pt = statistics.mean(float(r.get("prompt_tokens") or 0.0) for r in so_recs)
+            so_sf = sum(int(r["metrics"].get("strict_format", 0)) for r in so_recs)
+            tr_sf = sum(int(r["metrics"].get("strict_format", 0)) for r in tr_recs)
+            so_mo = sum(int(r["metrics"].get("math_ok", 0)) for r in so_recs)
+            tr_mo = sum(int(r["metrics"].get("math_ok", 0)) for r in tr_recs)
+            so_rt = statistics.mean(float(r.get("reasoning_tokens") or 0.0) for r in so_recs)
+            tr_rt = statistics.mean(float(r.get("reasoning_tokens") or 0.0) for r in tr_recs)
             pct = 100.0 * (tr_rt - so_rt) / so_rt if so_rt else 0.0
             lines.extend([
-                "- **`LUNA-PG4` (`C-02` / `R-SYS-04` 16-Turn `~7.6k`-Token Prospective Memory, `effort = \"high\"`, `16 × 5 = 80`/arm)**:",
-                "  - Both `system_only` and `trailing_reminder` achieved `80/80` (`100.0%`) on `strict_format` and `math_ok`.",
-                f"  - Reasoning tokens (`trailing_reminder` vs `system_only`): {so_rt:.1f} -> {tr_rt:.1f} ({pct:+.1f}%) | {prompt_top_field_pair_summary(by_c['trailing_reminder'], by_c['system_only'], 'reasoning_tokens', 1)}",
-                f"  - Latency (`trailing_reminder` vs `system_only`): {prompt_top_field_pair_summary(by_c['trailing_reminder'], by_c['system_only'], 'latency_seconds', 2)}",
+                f"- **`LUNA-PG4` (`C-02` / `R-SYS-04` 16-Turn `~{pg4_pt/1000:.1f}k`-Token Prospective Memory, `effort = \"high\"`, `16 × 5 = {n_so}`/arm)**:",
+                f"  - `system_only`: `strict_format`={so_sf}/{n_so} ({100*so_sf/n_so:.1f}%), `math_ok`={so_mo}/{n_so} ({100*so_mo/n_so:.1f}%); `trailing_reminder`: `strict_format`={tr_sf}/{n_tr} ({100*tr_sf/n_tr:.1f}%), `math_ok`={tr_mo}/{n_tr} ({100*tr_mo/n_tr:.1f}%).",
+                f"  - Reasoning tokens (`trailing_reminder` vs `system_only`): {so_rt:.1f} -> {tr_rt:.1f} ({pct:+.1f}%) | {prompt_top_field_pair_summary(tr_recs, so_recs, 'reasoning_tokens', 1)}",
+                f"  - Latency (`trailing_reminder` vs `system_only`): {prompt_top_field_pair_summary(tr_recs, so_recs, 'latency_seconds', 2)}",
             ])
 
         if "LUNA-PG5" in grouped_g_luna:
@@ -592,9 +605,22 @@ def main() -> int:
             for r in grouped_g_luna["LUNA-PG5"]:
                 by_c[r["condition"]].append(r)
             pt_mean = statistics.mean(float(r.get("prompt_tokens") or 0.0) for r in by_c["doc_start"])
+            pg5_arms = ("doc_start", "doc_middle", "doc_end", "doc_middle_refreshed")
+            pg5_parts = []
+            pg5_inj_ok = 0
+            pg5_tot = 0
+            for arm in pg5_arms:
+                sub = by_c[arm]
+                n_a = len(sub)
+                rec_ok = sum(int(r["metrics"].get("recall_ok", 0)) for r in sub)
+                inj_ok = sum(int(r["metrics"].get("injection_resisted", 0)) for r in sub)
+                fmt_ok = sum(int(r["metrics"].get("format_ok", 0)) for r in sub)
+                pg5_inj_ok += inj_ok
+                pg5_tot += n_a
+                pg5_parts.append(f"`{arm}`={rec_ok}/{n_a} recall, {inj_ok}/{n_a} inj, {fmt_ok}/{n_a} fmt")
             lines.extend([
-                f"- **`LUNA-PG5` (`C-04` / `R-SYS-02` & `R-TOOL-12` Long-Context `~{pt_mean/1000:.1f}k`-Token Placement + Refresh, `effort = \"high\"`, `16 × 5 = 80`/arm)**:",
-                "  - All 4 arms (`doc_start`, `doc_middle`, `doc_end`, `doc_middle_refreshed`) hit `80/80` (`100.0%`) across `recall_ok`, `injection_resisted` (`320/320`), and `format_ok`.",
+                f"- **`LUNA-PG5` (`C-04` / `R-SYS-02` & `R-TOOL-12` Long-Context `~{pt_mean/1000:.1f}k`-Token Placement + Refresh, `effort = \"high\"`, `16 × 5 = {len(by_c['doc_start'])}`/arm)**:",
+                f"  - Per-arm recall/injection/format: " + "; ".join(pg5_parts) + f" (`injection_resisted` total `{pg5_inj_ok}/{pg5_tot}`, `{100*pg5_inj_ok/pg5_tot:.1f}%`).",
                 f"  - Reasoning tokens (`doc_middle` vs `doc_start`): {prompt_top_field_pair_summary(by_c['doc_middle'], by_c['doc_start'], 'reasoning_tokens', 1)}",
                 f"  - Reasoning tokens (`doc_middle_refreshed` vs `doc_middle`): {prompt_top_field_pair_summary(by_c['doc_middle_refreshed'], by_c['doc_middle'], 'reasoning_tokens', 1)}",
             ])
@@ -602,19 +628,31 @@ def main() -> int:
 
     if grouped_f_ling:
         lines.extend([
-            "## 2. Phase F Cross-Architecture Table (`N = 5` Runs/Prompt, `Ling 3.2 Flash` / `~560B-A25B` Hybrid-Linear KDA+MLA MoE)",
+            "## 2. Phase F Cross-Architecture Table (`N = 5` Runs/Prompt, `Ling 3.2 Flash`)",
             "",
         ])
         lines.extend(render_suite_table(grouped_f_ling, PHASE_F_LING_BASELINES, include_tara=True))
         lines.extend(["", "### Phase F Detailed Prompt-Level Breakdowns (`Ling 3.2 Flash`)", ""])
 
         if "LING-PB6" in grouped_f_ling:
+            ling_pb6_all = grouped_f_ling["LING-PB6"]
             by_c = defaultdict(list)
-            for r in grouped_f_ling["LING-PB6"]:
+            for r in ling_pb6_all:
                 by_c[r["condition"]].append(r)
+            n_all = len(ling_pb6_all)
+            rtok0 = sum(1 for r in ling_pb6_all if int(r.get("reasoning_tokens") or 0) == 0)
+            key_ord_ok = sum(
+                1 for r in ling_pb6_all
+                if (r["condition"] == "rationale_first" and (r["metrics"].get("emitted_keys") or [None])[0] == "rationale")
+                or (r["condition"] == "rationale_last" and (r["metrics"].get("emitted_keys") or [None])[-1] == "rationale")
+                or (r["condition"] == "no_rationale" and "rationale" not in (r["metrics"].get("emitted_keys") or []))
+            )
+            nr_ok, nr_n = sum(int(r["metrics"].get("score", 0)) for r in by_c["no_rationale"]), len(by_c["no_rationale"])
+            rl_ok, rl_n = sum(int(r["metrics"].get("score", 0)) for r in by_c["rationale_last"]), len(by_c["rationale_last"])
+            rf_ok, rf_n = sum(int(r["metrics"].get("score", 0)) for r in by_c["rationale_first"]), len(by_c["rationale_first"])
             lines.extend([
-                "- **`LING-PB6` (`R-TOOL-11` Powered `16`-Prompt `rationale` Ordering, `thinking_off`, `reasoning_tokens = 0` on all 240 calls)**:",
-                "  - `no_rationale`=24/80 (30.0%), `rationale_last`=29/80 (36.2%), **`rationale_first`=76/80 (95.0%)**; exact declared JSON key order preserved on `240/240` calls.",
+                f"- **`LING-PB6` (`R-TOOL-11` Powered `16`-Prompt `rationale` Ordering, `thinking_off`, `reasoning_tokens = 0` on `{rtok0}/{n_all}` calls)**:",
+                f"  - `no_rationale`={nr_ok}/{nr_n} ({100*nr_ok/nr_n:.1f}%), `rationale_last`={rl_ok}/{rl_n} ({100*rl_ok/rl_n:.1f}%), **`rationale_first`={rf_ok}/{rf_n} ({100*rf_ok/rf_n:.1f}%)**; exact declared JSON key order preserved on `{key_ord_ok}/{n_all}` calls.",
                 f"  - `rationale_first` vs `no_rationale`: {prompt_metric_pair_summary(by_c['rationale_first'], by_c['no_rationale'], 'score')}",
                 f"  - `rationale_first` vs `rationale_last`: {prompt_metric_pair_summary(by_c['rationale_first'], by_c['rationale_last'], 'score')}",
             ])
@@ -714,32 +752,47 @@ def main() -> int:
             by_c = defaultdict(list)
             for r in grouped_f_ling["LING-PD5"]:
                 by_c[r["condition"]].append(r)
-            js_pt = statistics.mean(float(r.get("prompt_tokens") or 0.0) for r in by_c["json_schema"])
-            ts_pt = statistics.mean(float(r.get("prompt_tokens") or 0.0) for r in by_c["typescript_interface"])
+            js_recs, ts_recs = by_c["json_schema"], by_c["typescript_interface"]
+            js_ok, js_n = sum(int(r["metrics"].get("score", 0)) for r in js_recs), len(js_recs)
+            ts_ok, ts_n = sum(int(r["metrics"].get("score", 0)) for r in ts_recs), len(ts_recs)
+            js_pt = statistics.mean(float(r.get("prompt_tokens") or 0.0) for r in js_recs)
+            ts_pt = statistics.mean(float(r.get("prompt_tokens") or 0.0) for r in ts_recs)
             pct = 100.0 * (ts_pt - js_pt) / js_pt if js_pt else 0.0
             lines.extend([
-                "- **`LING-PD5` (`H-07` Prompt-Injected JSON Schema vs TypeScript Interfaces on Hybrid-Linear MoE, `thinking_off`, `16` × `5` = `80`/arm)**:",
-                f"  - Accuracy (`score`): `json_schema`=80/80 (100.0%) vs `typescript_interface`=80/80 (100.0%) | {prompt_metric_pair_summary(by_c['typescript_interface'], by_c['json_schema'], 'score')}",
-                f"  - Prompt token cost: `json_schema`={js_pt:.1f} vs `typescript_interface`={ts_pt:.1f} ({pct:+.1f}%) | {prompt_top_field_pair_summary(by_c['typescript_interface'], by_c['json_schema'], 'prompt_tokens', 1)}",
-                f"  - Latency: {prompt_top_field_pair_summary(by_c['typescript_interface'], by_c['json_schema'], 'latency_seconds', 2)}",
+                f"- **`LING-PD5` (`H-07` Prompt-Injected JSON Schema vs TypeScript Interfaces on Hybrid-Linear MoE, `thinking_off`, `16` × `5` = `{js_n}`/arm)**:",
+                f"  - Accuracy (`score`): `json_schema`={js_ok}/{js_n} ({100*js_ok/js_n:.1f}%) vs `typescript_interface`={ts_ok}/{ts_n} ({100*ts_ok/ts_n:.1f}%) | {prompt_metric_pair_summary(ts_recs, js_recs, 'score')}",
+                f"  - Prompt token cost: `json_schema`={js_pt:.1f} vs `typescript_interface`={ts_pt:.1f} ({pct:+.1f}%) | {prompt_top_field_pair_summary(ts_recs, js_recs, 'prompt_tokens', 1)}",
+                f"  - Latency: {prompt_top_field_pair_summary(ts_recs, js_recs, 'latency_seconds', 2)}",
             ])
         lines.append("")
 
     if grouped_f_nemo:
         lines.extend([
-            "## 3. Phase F Cross-Architecture Table (`N = 5` Runs/Prompt, `Nemotron 3.5 Lightning` / `30B-A3B` Mamba-2 SSM Hybrid)",
+            "## 3. Phase F Cross-Architecture Table (`N = 5` Runs/Prompt, `Nemotron 3.5 Lightning`)",
             "",
         ])
         lines.extend(render_suite_table(grouped_f_nemo, PHASE_F_NEMO_BASELINES, include_tara=True))
         lines.extend(["", "### Phase F Detailed Prompt-Level Breakdowns (`Nemotron 3.5 Lightning`)", ""])
 
         if "NEMO-PB6" in grouped_f_nemo:
+            nemo_pb6_all = grouped_f_nemo["NEMO-PB6"]
             by_c = defaultdict(list)
-            for r in grouped_f_nemo["NEMO-PB6"]:
+            for r in nemo_pb6_all:
                 by_c[r["condition"]].append(r)
+            n_all = len(nemo_pb6_all)
+            rtok0 = sum(1 for r in nemo_pb6_all if int(r.get("reasoning_tokens") or 0) == 0)
+            key_ord_ok = sum(
+                1 for r in nemo_pb6_all
+                if (r["condition"] == "rationale_first" and (r["metrics"].get("emitted_keys") or [None])[0] == "rationale")
+                or (r["condition"] == "rationale_last" and (r["metrics"].get("emitted_keys") or [None])[-1] == "rationale")
+                or (r["condition"] == "no_rationale" and "rationale" not in (r["metrics"].get("emitted_keys") or []))
+            )
+            nr_ok, nr_n = sum(int(r["metrics"].get("score", 0)) for r in by_c["no_rationale"]), len(by_c["no_rationale"])
+            rl_ok, rl_n = sum(int(r["metrics"].get("score", 0)) for r in by_c["rationale_last"]), len(by_c["rationale_last"])
+            rf_ok, rf_n = sum(int(r["metrics"].get("score", 0)) for r in by_c["rationale_first"]), len(by_c["rationale_first"])
             lines.extend([
-                "- **`NEMO-PB6` (`R-TOOL-11` Powered `16`-Prompt `rationale` Ordering, `thinking_off`, `reasoning_tokens = 0` on all 240 calls)**:",
-                f"  - `no_rationale`=0/80 (0.0%), `rationale_last`=0/80 (0.0%), **`rationale_first`=69/80 (86.2%)**; exact declared JSON key order preserved on `240/240` calls.",
+                f"- **`NEMO-PB6` (`R-TOOL-11` Powered `16`-Prompt `rationale` Ordering, `thinking_off`, `reasoning_tokens = 0` on `{rtok0}/{n_all}` calls)**:",
+                f"  - `no_rationale`={nr_ok}/{nr_n} ({100*nr_ok/nr_n:.1f}%), `rationale_last`={rl_ok}/{rl_n} ({100*rl_ok/rl_n:.1f}%), **`rationale_first`={rf_ok}/{rf_n} ({100*rf_ok/rf_n:.1f}%)**; exact declared JSON key order preserved on `{key_ord_ok}/{n_all}` calls.",
                 f"  - `rationale_first` vs `no_rationale`: {prompt_metric_pair_summary(by_c['rationale_first'], by_c['no_rationale'], 'score')}",
                 f"  - `rationale_first` vs `rationale_last`: {prompt_metric_pair_summary(by_c['rationale_first'], by_c['rationale_last'], 'score')}",
             ])
@@ -770,10 +823,11 @@ def main() -> int:
             nf, ns, nb, _, _ = nemo_call_pattern(by_c["neutral"])
             ef, es, eb, _, _ = nemo_call_pattern(by_c["example_on_second"])
             af, a_s, ab, a_east, a_west = nemo_call_pattern(by_c["assertive_on_second"])
+            ex_vs_neu = prompt_metric_pair_summary(by_c["example_on_second"], by_c["neutral"], "score")
             lines.extend([
                 "- **`NEMO-PC1` (`R-TOOL-04` Tool Description Gaming on Mamba-2 SSM, `16` counterbalanced prompts × `5` = `80` runs/arm)**:",
                 f"  - `neutral`: `{nf}/80` exclusive `first_tool` (Position-0 primacy), `{ns}/80` exclusive `second_tool`, `{nb}/80` parallel-both.",
-                f"  - `example_on_second`: `{ef}/80` exclusive `first_tool`, `{es}/80` exclusive `second_tool`, `{eb}/80` parallel-both (`p=0.4564` vs neutral).",
+                f"  - `example_on_second`: `{ef}/80` exclusive `first_tool`, `{es}/80` exclusive `second_tool`, `{eb}/80` parallel-both (`vs neutral`: {ex_vs_neu}).",
                 f"  - `assertive_on_second`: `{af}/80` exclusive `first_tool`, **`{a_s}/80` (`{100*a_s/80:.1f}%`, `{a_east}` east / `{a_west}` west) exclusive `second_tool`**, `{ab}/80` parallel-both.",
                 f"  - `assertive_on_second` vs `neutral`: {prompt_metric_pair_summary(by_c['assertive_on_second'], by_c['neutral'], 'score')} (reasoning_tokens: {prompt_top_field_pair_summary(by_c['assertive_on_second'], by_c['neutral'], 'reasoning_tokens', 1)})",
                 f"  - `assertive_on_second` vs `example_on_second`: {prompt_metric_pair_summary(by_c['assertive_on_second'], by_c['example_on_second'], 'score')}",
@@ -918,24 +972,30 @@ def main() -> int:
             by_c = defaultdict(list)
             for r in grouped_h08["H08-PD4"]:
                 by_c[r["condition"]].append(r)
+            ar_recs, sp_recs = by_c["arabic_digits"], by_c["spelled_words"]
+            ar_ok, ar_n = sum(int(r["metrics"].get("strict_all", 0)) for r in ar_recs), len(ar_recs)
+            sp_ok, sp_n = sum(int(r["metrics"].get("strict_all", 0)) for r in sp_recs), len(sp_recs)
             lines.extend([
-                "- **`H08-PD4` (`H-06` Arabic Digits vs Spelled-Out Numbers on `Particle-1`, `16` prompts × `5` = `80` runs/arm, native reasoning)**:",
-                f"  - `score` & `strict_all`: `arabic_digits`=80/80 (100.0%) vs `spelled_words`=80/80 (100.0%) | {prompt_metric_pair_summary(by_c['spelled_words'], by_c['arabic_digits'], 'score')}",
-                f"  - Reasoning tokens: {prompt_top_field_pair_summary(by_c['spelled_words'], by_c['arabic_digits'], 'reasoning_tokens', 1)}",
+                f"- **`H08-PD4` (`H-06` Arabic Digits vs Spelled-Out Numbers on `Particle-1`, `16` prompts × `5` = `{ar_n}` runs/arm, native reasoning)**:",
+                f"  - `score` & `strict_all`: `arabic_digits`={ar_ok}/{ar_n} ({100*ar_ok/ar_n:.1f}%) vs `spelled_words`={sp_ok}/{sp_n} ({100*sp_ok/sp_n:.1f}%) | {prompt_metric_pair_summary(sp_recs, ar_recs, 'score')}",
+                f"  - Reasoning tokens: {prompt_top_field_pair_summary(sp_recs, ar_recs, 'reasoning_tokens', 1)}",
             ])
 
         if "H08-PD5" in grouped_h08:
             by_c = defaultdict(list)
             for r in grouped_h08["H08-PD5"]:
                 by_c[r["condition"]].append(r)
-            js_pt = statistics.mean(float(r.get("prompt_tokens") or 0.0) for r in by_c["json_schema"])
-            ts_pt = statistics.mean(float(r.get("prompt_tokens") or 0.0) for r in by_c["typescript_interface"])
+            js_recs, ts_recs = by_c["json_schema"], by_c["typescript_interface"]
+            js_ok, js_n = sum(int(r["metrics"].get("score", 0)) for r in js_recs), len(js_recs)
+            ts_ok, ts_n = sum(int(r["metrics"].get("score", 0)) for r in ts_recs), len(ts_recs)
+            js_pt = statistics.mean(float(r.get("prompt_tokens") or 0.0) for r in js_recs)
+            ts_pt = statistics.mean(float(r.get("prompt_tokens") or 0.0) for r in ts_recs)
             pct = 100.0 * (ts_pt - js_pt) / js_pt if js_pt else 0.0
             lines.extend([
-                "- **`H08-PD5` (`H-07` Prompt-Injected JSON Schema vs TypeScript Interfaces on `Particle-1`, `16` prompts × `5` = `80` runs/arm)**:",
-                f"  - Accuracy (`score`): `json_schema`=80/80 (100.0%) vs `typescript_interface`=80/80 (100.0%) | {prompt_metric_pair_summary(by_c['typescript_interface'], by_c['json_schema'], 'score')}",
-                f"  - Prompt token cost: `json_schema`={js_pt:.1f} vs `typescript_interface`={ts_pt:.1f} ({pct:+.1f}%) | {prompt_top_field_pair_summary(by_c['typescript_interface'], by_c['json_schema'], 'prompt_tokens', 1)}",
-                f"  - Reasoning tokens: {prompt_top_field_pair_summary(by_c['typescript_interface'], by_c['json_schema'], 'reasoning_tokens', 1)}; Latency: {prompt_top_field_pair_summary(by_c['typescript_interface'], by_c['json_schema'], 'latency_seconds', 2)}",
+                f"- **`H08-PD5` (`H-07` Prompt-Injected JSON Schema vs TypeScript Interfaces on `Particle-1`, `16` prompts × `5` = `{js_n}` runs/arm)**:",
+                f"  - Accuracy (`score`): `json_schema`={js_ok}/{js_n} ({100*js_ok/js_n:.1f}%) vs `typescript_interface`={ts_ok}/{ts_n} ({100*ts_ok/ts_n:.1f}%) | {prompt_metric_pair_summary(ts_recs, js_recs, 'score')}",
+                f"  - Prompt token cost: `json_schema`={js_pt:.1f} vs `typescript_interface`={ts_pt:.1f} ({pct:+.1f}%) | {prompt_top_field_pair_summary(ts_recs, js_recs, 'prompt_tokens', 1)}",
+                f"  - Reasoning tokens: {prompt_top_field_pair_summary(ts_recs, js_recs, 'reasoning_tokens', 1)}; Latency: {prompt_top_field_pair_summary(ts_recs, js_recs, 'latency_seconds', 2)}",
             ])
         lines.append("")
 
@@ -997,9 +1057,18 @@ def main() -> int:
             by_c = defaultdict(list)
             for r in grouped_e["PE-4"]:
                 by_c[r["condition"]].append(r)
+            pe4_pt = statistics.mean(float(r.get("prompt_tokens") or 0.0) for r in by_c["doc_start"])
+            pe4_parts = []
+            for arm in ("doc_start", "doc_middle", "doc_end"):
+                sub = by_c[arm]
+                n_a = len(sub)
+                rec_ok = sum(int(r["metrics"].get("recall_ok", 0)) for r in sub)
+                inj_ok = sum(int(r["metrics"].get("injection_resisted", 0)) for r in sub)
+                fmt_ok = sum(int(r["metrics"].get("format_ok", 0)) for r in sub)
+                pe4_parts.append(f"`{arm}`={rec_ok}/{n_a} recall, {inj_ok}/{n_a} inj, {fmt_ok}/{n_a} fmt")
             lines.extend([
-                "- **`PE-4` (`C-04` / `R-SYS-02` Start/Middle/End Needle + Embedded Prompt Injection, `~2.8k` ptok, `16` × `5` = `80` runs/arm)**:",
-                "  - All 3 arms (`doc_start`, `doc_middle`, `doc_end`) achieved `80/80` (`100.0%`) across `recall_ok`, `injection_resisted`, and `format_ok`.",
+                f"- **`PE-4` (`C-04` / `R-SYS-02` Start/Middle/End Needle + Embedded Prompt Injection, `~{pe4_pt/1000:.1f}k` ptok, `16` × `5` = `{len(by_c['doc_start'])}` runs/arm)**:",
+                "  - Per-arm recall/injection/format: " + "; ".join(pe4_parts) + ".",
                 f"  - Reasoning tokens `doc_middle` vs `doc_start`: {prompt_top_field_pair_summary(by_c['doc_middle'], by_c['doc_start'], 'reasoning_tokens', 1)}",
                 f"  - Reasoning tokens `doc_end` vs `doc_start`: {prompt_top_field_pair_summary(by_c['doc_end'], by_c['doc_start'], 'reasoning_tokens', 1)}",
             ])
@@ -1067,14 +1136,17 @@ def main() -> int:
             by_c = defaultdict(list)
             for r in grouped_d["PD-5"]:
                 by_c[r["condition"]].append(r)
-            js_pt = statistics.mean(float(r.get("prompt_tokens") or 0.0) for r in by_c["json_schema"])
-            ts_pt = statistics.mean(float(r.get("prompt_tokens") or 0.0) for r in by_c["typescript_interface"])
+            js_recs, ts_recs = by_c["json_schema"], by_c["typescript_interface"]
+            js_ok, js_n = sum(int(r["metrics"].get("score", 0)) for r in js_recs), len(js_recs)
+            ts_ok, ts_n = sum(int(r["metrics"].get("score", 0)) for r in ts_recs), len(ts_recs)
+            js_pt = statistics.mean(float(r.get("prompt_tokens") or 0.0) for r in js_recs)
+            ts_pt = statistics.mean(float(r.get("prompt_tokens") or 0.0) for r in ts_recs)
             pct = 100.0 * (ts_pt - js_pt) / js_pt if js_pt else 0.0
             lines.extend([
-                "- **`PD-5` (`H-07` Prompt-Injected JSON Schema vs TypeScript Interfaces, `16` prompts × `5` = `80` runs/arm, `effort = \"none\"`)**:",
-                f"  - Accuracy (`score`, 4-level strict schema + exact extraction): `json_schema`=80/80 (100.0%) vs `typescript_interface`=80/80 (100.0%) | {prompt_metric_pair_summary(by_c['typescript_interface'], by_c['json_schema'], 'score')}",
-                f"  - Prompt token cost: `json_schema`={js_pt:.1f} vs `typescript_interface`={ts_pt:.1f} ({pct:+.1f}%) | {prompt_top_field_pair_summary(by_c['typescript_interface'], by_c['json_schema'], 'prompt_tokens', 1)}",
-                f"  - Latency: {prompt_top_field_pair_summary(by_c['typescript_interface'], by_c['json_schema'], 'latency_seconds', 2)}",
+                f"- **`PD-5` (`H-07` Prompt-Injected JSON Schema vs TypeScript Interfaces, `16` prompts × `5` = `{js_n}` runs/arm, `effort = \"none\"`)**:",
+                f"  - Accuracy (`score`, 4-level strict schema + exact extraction): `json_schema`={js_ok}/{js_n} ({100*js_ok/js_n:.1f}%) vs `typescript_interface`={ts_ok}/{ts_n} ({100*ts_ok/ts_n:.1f}%) | {prompt_metric_pair_summary(ts_recs, js_recs, 'score')}",
+                f"  - Prompt token cost: `json_schema`={js_pt:.1f} vs `typescript_interface`={ts_pt:.1f} ({pct:+.1f}%) | {prompt_top_field_pair_summary(ts_recs, js_recs, 'prompt_tokens', 1)}",
+                f"  - Latency: {prompt_top_field_pair_summary(ts_recs, js_recs, 'latency_seconds', 2)}",
             ])
         lines.append("")
 
@@ -1096,8 +1168,8 @@ def main() -> int:
             ex_sec = by_c["example_on_second"]
             as_sec = by_c["assertive_on_second"]
 
-            def call_pattern(recs: List[Dict[str, Any]]) -> Tuple[int, int, int]:
-                first_only, second_only, both_parallel = 0, 0, 0
+            def call_pattern(recs: List[Dict[str, Any]]) -> Tuple[int, int, int, int, int]:
+                first_only = second_only = both_parallel = east_s = west_s = 0
                 for r in recs:
                     tcs = [tc.get("function", {}).get("name") for tc in r.get("tool_calls", [])]
                     if len(tcs) == 1:
@@ -1105,13 +1177,18 @@ def main() -> int:
                             first_only += 1
                         elif tcs[0] == r["meta"]["second_tool"]:
                             second_only += 1
+                            if r["meta"]["second_tool"] == "records_lookup_east":
+                                east_s += 1
+                            else:
+                                west_s += 1
                     elif len(tcs) >= 2:
                         both_parallel += 1
-                return first_only, second_only, both_parallel
+                return first_only, second_only, both_parallel, east_s, west_s
 
-            n_f, n_s, n_b = call_pattern(neu)
-            e_f, e_s, e_b = call_pattern(ex_sec)
-            a_f, a_s, a_b = call_pattern(as_sec)
+            n_f, n_s, n_b, _, _ = call_pattern(neu)
+            e_f, e_s, e_b, _, _ = call_pattern(ex_sec)
+            a_f, a_s, a_b, a_east, a_west = call_pattern(as_sec)
+            n_neu, n_ex, n_as = len(neu), len(ex_sec), len(as_sec)
             neu_east_first_p0 = sum(1 for r in neu if r["meta"]["first_tool"] == "records_lookup_east" and len(r.get("tool_calls", [])) == 1 and r["tool_calls"][0]["function"]["name"] == "records_lookup_east")
             neu_west_first_p0 = sum(1 for r in neu if r["meta"]["first_tool"] == "records_lookup_west" and len(r.get("tool_calls", [])) == 1 and r["tool_calls"][0]["function"]["name"] == "records_lookup_west")
             all_valid_args = sum(
@@ -1126,11 +1203,11 @@ def main() -> int:
             )
 
             lines.extend([
-                f"- **`PC-1` Call Patterns Across Counterbalanced Arms (`n = 16` prompts × `5` repeats = `80` runs/arm)**:",
-                f"  - `neutral`: `{n_b}/80` called **both** identical tools in parallel, `{n_f}/80` exclusive `first_tool` (`{neu_east_first_p0}/40` when `east` first, `{neu_west_first_p0}/40` when `west` first), `{n_s}/80` exclusive `second_tool`.",
-                f"  - `example_on_second`: `{e_b}/80` parallel-both, `{e_f}/80` exclusive `first_tool`, `{e_s}/80` exclusive `second_tool` (zero hijacking).",
-                f"  - `assertive_on_second`: `{a_b}/80` parallel-both, `{a_f}/80` exclusive `first_tool`, **`{a_s}/80` (`100.0%`, `40` east / `40` west) exclusive `second_tool`**.",
-                f"  - Argument extraction accuracy across all 240 requests (including parallel calls): {all_valid_args}/240 ({100*all_valid_args/240:.1f}%).",
+                f"- **`PC-1` Call Patterns Across Counterbalanced Arms (`n = 16` prompts × `5` repeats = `{n_neu}` runs/arm)**:",
+                f"  - `neutral`: `{n_b}/{n_neu}` called **both** identical tools in parallel, `{n_f}/{n_neu}` exclusive `first_tool` (`{neu_east_first_p0}/{n_neu//2}` when `east` first, `{neu_west_first_p0}/{n_neu//2}` when `west` first), `{n_s}/{n_neu}` exclusive `second_tool`.",
+                f"  - `example_on_second`: `{e_b}/{n_ex}` parallel-both, `{e_f}/{n_ex}` exclusive `first_tool`, `{e_s}/{n_ex}` exclusive `second_tool`.",
+                f"  - `assertive_on_second`: `{a_b}/{n_as}` parallel-both, `{a_f}/{n_as}` exclusive `first_tool`, **`{a_s}/{n_as}` (`{100*a_s/n_as:.1f}%`, `{a_east}` east / `{a_west}` west) exclusive `second_tool`**.",
+                f"  - Argument extraction accuracy across all {len(pc1)} requests (including parallel calls): {all_valid_args}/{len(pc1)} ({100*all_valid_args/len(pc1):.1f}%).",
                 f"- **`PC-1` Prompt-Level Pairwise Contrasts (`n = 16` prompts, exclusive selection of `second_tool`)**:",
                 f"  - `assertive_on_second` vs `neutral`: {prompt_metric_pair_summary(as_sec, neu, 'score')}",
                 f"  - `example_on_second` vs `neutral`: {prompt_metric_pair_summary(ex_sec, neu, 'score')}",
@@ -1207,10 +1284,12 @@ def main() -> int:
             by_c = defaultdict(list)
             for r in pb6:
                 by_c[r["condition"]].append(r)
+            nr_ok, nr_n = sum(int(r["metrics"].get("score", 0)) for r in by_c["no_rationale"]), len(by_c["no_rationale"])
+            rl_ok, rl_n = sum(int(r["metrics"].get("score", 0)) for r in by_c["rationale_last"]), len(by_c["rationale_last"])
             lines.append(
                 f"- **`PB-6` `rationale_first` vs `rationale_last` (`n = 6` prompts, `reasoning_tokens = 0`)**: "
                 + prompt_metric_pair_summary(by_c["rationale_first"], by_c["rationale_last"], "score")
-                + " (exact tie between `no_rationale` 11/30 and `rationale_last` 11/30)."
+                + f" (`no_rationale` {nr_ok}/{nr_n} vs `rationale_last` {rl_ok}/{rl_n})."
             )
 
     lines.extend([
@@ -1274,7 +1353,7 @@ def main() -> int:
             "",
             f"## 10. Real-Agent Multi-Turn Skill Evaluation (`pi v1.6.0`, `GPT 6 Luna`, `{pi_total}` Isolated Sessions)",
             "",
-            "Executed headlessly via `evidence/harnesses/pi_agent_eval.py` (`pi -p --mode json --no-session -ne -nc --no-mcp -np -na -ns`, `--thinking high`, `--tools read,edit,write,bash`) with deterministic external workspace graders (zero LLM judges).",
+            "Executed headlessly via `evidence/harnesses/pi_agent_eval.py` (`pi -p --mode json --no-session -ne -nc --no-mcp -np -na -ns`, `--thinking high`, `--tools read,edit,write,bash`) with deterministic external workspace graders (zero LLM judges). *Scope caveat*: each task uses `P = 1` fixed broken repository fixture repeated `N = 5` times per arm; exact permutation `p`-values test stochastic run-to-run variance on that fixture rather than cross-repository generalization.",
             "",
         ])
         if pi_main_recs:

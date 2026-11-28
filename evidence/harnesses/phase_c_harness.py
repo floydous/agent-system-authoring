@@ -15,7 +15,7 @@ Configured solely via environment variables:
   - TARGET_MODEL (provenance traces ran on GPT 6 Luna)
 
 Writes raw records (stripped of auth headers and gateway URLs) to
-evidence/raw_phase_c/results_<SUITE>.jsonl.
+evidence/raw/phase_c/results_<SUITE>.jsonl.
 """
 
 from __future__ import annotations
@@ -381,7 +381,7 @@ def run_suite(cfg: RunConfig, suite_cls: Any, out_dir: Path) -> Tuple[int, int]:
             "metrics": metrics,
         }
 
-    with out_path.open("w", encoding="utf-8") as fh:
+    with out_path.open("w", encoding="utf-8", newline="\n") as fh:
         with ThreadPoolExecutor(max_workers=cfg.concurrency) as pool:
             futs = [pool.submit(worker, it) for it in items]
             for fut in as_completed(futs):

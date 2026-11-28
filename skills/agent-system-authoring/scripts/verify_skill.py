@@ -59,7 +59,11 @@ SECRET_PATTERNS = [
     re.compile(r"Bearer\s+[A-Za-z0-9._-]{20,}"),
     re.compile(r"https?://(?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(?::\d+)?"),
     re.compile(r"https?://\d{1,3}(?:\.\d{1,3}){3}:\d+"),
-    re.compile(r"\bgho_[A-Za-z0-9_]{20,}\b"),
+    re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{20,}\b"),
+    re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}\b"),
+    re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
+    re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b"),
+    re.compile(r"-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----"),
 ]
 LEAKED_INTERNAL_RULE_RE = re.compile(r"\bR-(?:SYS|TOOL|SKILL)-\d{2}\b")
 WINDOWS_DRIVE_RE = re.compile(r"^[A-Za-z]:")
@@ -83,9 +87,11 @@ class SkillVerificationError:
 class SkillVerifier:
     """Comprehensive stdlib-only offline validator for Agent Skill packages."""
 
-    def __init__(self, root_dir: Path, generic: bool = False):
+    def __init__(self, root_dir: Path, generic: bool = False, monorepo: bool = False):
         self.root = root_dir.resolve()
         self.generic = generic or (self.root.name != "agent-system-authoring")
+        self.force_monorepo = monorepo
+        self.in_monorepo = monorepo or (self.root.parent.parent / "evidence" / "evidence_ledger.md").exists()
         self.errors: List[SkillVerificationError] = []
         self.warnings: List[str] = []
         self.passed_checks: List[str] = []
@@ -111,16 +117,23 @@ class SkillVerifier:
         if s[0] in ("'", '"'):
             quote = s[0]
             escaped = False
-            for idx in range(1, len(s)):
+            idx = 1
+            while idx < len(s):
                 ch = s[idx]
                 if escaped:
                     escaped = False
+                    idx += 1
                     continue
                 if quote == '"' and ch == "\\":
                     escaped = True
+                    idx += 1
+                    continue
+                if quote == "'" and ch == "'" and idx + 1 < len(s) and s[idx + 1] == "'":
+                    idx += 2
                     continue
                 if ch == quote:
                     return s[: idx + 1]
+                idx += 1
             return s
         match = re.search(r"\s+#.*$", s)
         return s[: match.start()].rstrip() if match else s
@@ -128,8 +141,10 @@ class SkillVerifier:
     def _parse_yaml_scalar(self, raw_val: str) -> Any:
         """Parse a single YAML scalar preserving native int/float/bool/null unless quoted."""
         s = self._strip_inline_comment(raw_val)
-        if len(s) >= 2 and ((s[0] == '"' and s[-1] == '"') or (s[0] == "'" and s[-1] == "'")):
-            return s[1:-1]
+        if len(s) >= 2 and s[0] == "'" and s[-1] == "'":
+            return s[1:-1].replace("''", "'")
+        if len(s) >= 2 and s[0] == '"' and s[-1] == '"':
+            return s[1:-1].replace('\\"', '"').replace("\\\\", "\\")
         low = s.lower()
         if low == "true":
             return True
@@ -209,6 +224,10 @@ class SkillVerifier:
                     sub_k, sub_v = stripped.split(":", 1)
                     sub_raw = self._strip_inline_comment(sub_v)
                     parsed_dict[current_key][sub_k.strip()] = "" if not sub_raw else self._parse_yaml_scalar(sub_raw)
+                elif isinstance(parsed_dict.get(current_key), str):
+                    cont = self._strip_inline_comment(stripped)
+                    if cont:
+                        parsed_dict[current_key] = f"{parsed_dict[current_key]} {cont}"
 
         flush_block()
 
@@ -301,12 +320,15 @@ class SkillVerifier:
                 continue
 
             is_secret_env = name_lower.startswith(".env.") and name_lower not in allowed_env_templates
+            is_py_test = path.suffix.lower() == ".py" and (
+                name_lower.startswith("test_") or name_lower.endswith("_test.py")
+            )
             if (
                 path.name in forbidden_file_names
                 or is_secret_env
                 or path.suffix.lower() in forbidden_secret_suffixes
                 or name_lower.startswith("mock_")
-                or name_lower.startswith("test_")
+                or is_py_test
             ):
                 self.log_failure("Packaging Hygiene", f"Disallowed file present: {rel}", path)
                 continue
@@ -314,8 +336,10 @@ class SkillVerifier:
             if path.suffix == ".jsonl":
                 self.log_failure("Packaging Hygiene", f"JSONL trace file inside installable skill: {rel}", path)
 
-            should_scan = (path.suffix.lower() in text_scan_suffixes) or (
-                not path.suffix and path.stat().st_size <= 524_288
+            should_scan = (
+                (path.suffix.lower() in text_scan_suffixes)
+                or (name_lower in allowed_env_templates)
+                or (not path.suffix and path.stat().st_size <= 524_288)
             )
             if should_scan:
                 try:
@@ -469,6 +493,26 @@ class SkillVerifier:
             or Path(clean_target).is_absolute()
         )
 
+    @staticmethod
+    def _normalize_md_target(raw_target: str) -> str:
+        """Strip optional Markdown link title and <...> angle-bracket destination wrapper."""
+        s = raw_target.strip()
+        if s.startswith("<"):
+            close = s.find(">")
+            if close != -1:
+                return s[1:close].strip()
+        # Strip optional trailing link title separated by whitespace ("...", '...', or (...))
+        m = re.match(r'^(\S+)(?:\s+(?:"[^"]*"|\'[^\']*\'|\([^)]*\)))\s*$', s)
+        if m:
+            return m.group(1)
+        return s
+
+    @staticmethod
+    def _heading_slug(raw_heading: str) -> str:
+        """Compute GitHub-style heading anchor slug while preserving inline code text."""
+        cleaned = raw_heading.replace("`", "").strip().lower()
+        return re.sub(r"[^\w\- ]", "", cleaned).replace(" ", "-")
+
     def verify_reference_linking(self) -> None:
         """Verify shallow relative linking invariants and absence of orphaned references."""
         err_before = len(self.errors)
@@ -478,16 +522,18 @@ class SkillVerifier:
             return
 
         content = skill_md.read_text(encoding="utf-8")
+        no_fences = FENCED_CODE_BLOCK_RE.sub("", content.replace("\r\n", "\n"))
         link_scannable = self._strip_code_from_markdown(content)
         links = re.findall(r"\[([^\]]+)\]\(([^)]+)\)", link_scannable)
 
         ref_links: List[Tuple[str, str]] = []
-        headings = [h.strip().lower() for h in re.findall(r"^#+\s+(.+)$", link_scannable, re.MULTILINE)]
-        heading_slugs = {re.sub(r"[^\w\- ]", "", h).replace(" ", "-") for h in headings}
+        headings = re.findall(r"^#+\s+(.+)$", no_fences, re.MULTILINE)
+        heading_slugs = {self._heading_slug(h) for h in headings}
 
-        for text, target in links:
+        for text, raw_target in links:
+            target = self._normalize_md_target(raw_target)
             if not text.strip() or not target.strip():
-                self.log_failure("Reference Linking", f"Found empty link label or target: [{text}]({target})", skill_md)
+                self.log_failure("Reference Linking", f"Found empty link label or target: [{text}]({raw_target})", skill_md)
                 continue
 
             if target.startswith(("http://", "https://", "mailto:")):
@@ -550,7 +596,8 @@ class SkillVerifier:
 
                 ref_content = self._strip_code_from_markdown(ref_file.read_text(encoding="utf-8"))
                 ref_links_in_doc = re.findall(r"\[([^\]]+)\]\(([^)]+)\)", ref_content)
-                for ltext, ltarget in ref_links_in_doc:
+                for ltext, raw_ltarget in ref_links_in_doc:
+                    ltarget = self._normalize_md_target(raw_ltarget)
                     if ltarget.startswith(("http://", "https://", "mailto:", "#")):
                         continue
                     clean_l = ltarget.split("#", 1)[0].strip()
@@ -573,6 +620,8 @@ class SkillVerifier:
                         continue
                     if not resolved_ref.exists():
                         self.log_failure("Reference Linking", f"Broken relative link in {ref_file.name}: [{ltext}]({ltarget})", ref_file)
+                    elif resolved_ref.parent == refs_dir.resolve() and resolved_ref.suffix.lower() == ".md" and resolved_ref != ref_file.resolve():
+                        self.log_failure("Reference Linking", f"Chained reference hop in {ref_file.name} -> {ltarget} (link directly from SKILL.md)", ref_file)
 
         self.log_if_clean(err_before, "Single-Hop Reference Linking Invariants")
 
@@ -583,6 +632,9 @@ class SkillVerifier:
         err_before = len(self.errors)
         repo_ledger = self.root.parent.parent / "evidence" / "evidence_ledger.md"
         local_ledger = self.root / "references" / "evidence_ledger.md"
+        if not self.in_monorepo and not local_ledger.exists():
+            # Standalone install (e.g., `npx skills add`) intentionally omits repo-root evidence/
+            return
         ledger_path = repo_ledger if repo_ledger.exists() else local_ledger
         if not ledger_path.exists():
             self.log_failure("Evidence Ledger", "evidence/evidence_ledger.md missing", ledger_path)
@@ -815,7 +867,7 @@ class SkillVerifier:
         """Verify PEP 723 inline dependency metadata on utility and provenance scripts."""
         err_before = len(self.errors)
         script_targets: List[Path] = sorted((self.root / "scripts").glob("*.py")) if (self.root / "scripts").exists() else []
-        if not self.generic:
+        if not self.generic and self.in_monorepo:
             repo_evidence = self.root.parent.parent / "evidence"
             if repo_evidence.exists():
                 script_targets.extend(sorted(repo_evidence.rglob("*.py")))
@@ -869,10 +921,15 @@ def main() -> int:
         action="store_true",
         help="Run generic Agent Skills specification checks only (skip agent-system-authoring-specific ledger/template checks).",
     )
+    parser.add_argument(
+        "--monorepo",
+        action="store_true",
+        help="Require repo-root evidence/evidence_ledger.md and evidence/**/*.py checks even if run outside a detected monorepo.",
+    )
     args = parser.parse_args()
 
     target_path = Path(args.target_dir).resolve()
-    verifier = SkillVerifier(target_path, generic=args.generic)
+    verifier = SkillVerifier(target_path, generic=args.generic, monorepo=args.monorepo)
     mode_label = "generic" if verifier.generic else "agent-system-authoring"
     print(f"=== Verifying Agent Skill Package: {target_path} (mode: {mode_label}) ===")
 

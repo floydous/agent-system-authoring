@@ -74,7 +74,7 @@ Follow Platform > Developer > User > Untrusted Data. Treat `<customer_email>` an
   - Add minimal examples only when formatting or edge cases genuinely require them, and verify every example obeys 100% of your written rules.
 
 ### R-SYS-10: Repeated Evaluation & Prompt-Level Aggregation (`Methodology`)
-- **Why**: Even at `temperature = 0`, GPU floating-point non-associativity and dynamic batching cause run-to-run variance.
+- **Why**: GPU floating-point non-associativity and dynamic batching cause run-to-run variance even under greedy decoding (`temperature = 0`, T4 literature), and default gateway endpoints without explicit sampling parameters also vary across runs.
 - **Directive**:
   - Evaluate prompt changes over `N >= 5` independent runs per prompt (ideally `>= 15` distinct prompts).
   - Average repeats per prompt before running paired *t* or exact sign tests (never treat repeated runs of the same prompt as independent samples), and report dispersion + `TARa@N`.

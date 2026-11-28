@@ -6,7 +6,7 @@
 
 Executes powered, deconfounded, multi-iteration (N = 5 runs per prompt)
 experiments at reasoning_effort = "high" on GPT 6 Luna across the four
-remaining single-model items in references/unverified_hypotheses.md:
+remaining single-model items in evidence/unverified_hypotheses.md:
 - PE-1 (R-SYS-01): Simultaneous non-keyword behavioral rule density (5, 10, 20, 50
   nested rules; 16 prompts x 4 densities x 5 = 320 calls)
 - PE-2 (C-02 / R-SYS-04): Prospective memory under heavy concurrent log distraction
@@ -22,7 +22,7 @@ Configured solely via environment variables:
   - TARGET_MODEL (provenance traces ran on GPT 6 Luna)
 
 Writes raw records (stripped of auth headers and gateway URLs) to
-evidence/raw_phase_e/results_<SUITE>.jsonl.
+evidence/raw/phase_e/results_<SUITE>.jsonl.
 """
 
 from __future__ import annotations

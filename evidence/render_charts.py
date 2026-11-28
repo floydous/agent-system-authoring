@@ -19,6 +19,7 @@ Usage:
 """
 from __future__ import annotations
 
+import gzip
 import html
 import json
 import shutil
@@ -33,12 +34,49 @@ OUT_DIR = EVIDENCE_DIR / "charts"
 
 def _load_jsonl(path: Path) -> list[dict]:
     rows = []
+    if path.suffix == ".gz":
+        with gzip.open(path, "rt", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if line:
+                    rows.append(json.loads(line))
+        return rows
     with path.open("r", encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
             if line:
                 rows.append(json.loads(line))
     return rows
+
+
+def _count_benchmark_runs() -> int:
+    """Count total benchmark records dynamically across all Phase A-G & H-08 trace files."""
+    raw_root = EVIDENCE_DIR / "raw"
+    dirs = (
+        "phase_a",
+        "phase_b",
+        "phase_c",
+        "phase_d",
+        "phase_e",
+        "h08_particle1",
+        "phase_f_nemo",
+        "phase_f_ling",
+        "phase_g_luna",
+    )
+    total = 0
+    for d in dirs:
+        sub = raw_root / d
+        if not sub.exists():
+            continue
+        seen_stems: set[str] = set()
+        for pat in ("results_*.jsonl", "results_*.jsonl.gz"):
+            for fp in sorted(sub.glob(pat)):
+                stem = fp.name[:-3] if fp.name.endswith(".gz") else fp.name
+                if stem in seen_stems:
+                    continue
+                seen_stems.add(stem)
+                total += len(_load_jsonl(fp))
+    return total
 
 
 def _mean_metric(path: Path, condition: str, key: str = "score") -> float:
@@ -109,6 +147,7 @@ def collect_verified_metrics() -> dict:
         rt_drops.append((wo - wi) / wo * 100.0)
 
     return {
+        "total_runs": _count_benchmark_runs(),
         "rows": [
             {
                 "title": "Parameter descriptions",
@@ -129,7 +168,7 @@ def collect_verified_metrics() -> dict:
             },
             {
                 "title": "Assertive tool hype",
-                "sub": "Wrong-tool hijack rate",
+                "sub": "Exclusive 2nd-tool pick (twin shards)",
                 "tone": "risk",
                 "before": band([
                     (p["pc"] / "results_PC-1.jsonl", "neutral", "score"),
@@ -160,11 +199,11 @@ def collect_verified_metrics() -> dict:
                 ]),
             },
             {
-                "title": "50 rules vs. 5–10 rules",
+                "title": "50 rules vs. 10 rules",
                 "sub": "Strict all-rules pass rate",
                 "tone": "risk",
                 "before": band([
-                    (p["ling"] / "results_LING-PE1.jsonl", "rules_05", "strict_all"),
+                    (p["ling"] / "results_LING-PE1.jsonl", "rules_10", "strict_all"),
                     (p["pe"] / "results_PE-1.jsonl", "rules_10", "strict_all"),
                 ]),
                 "after": band([
@@ -174,7 +213,7 @@ def collect_verified_metrics() -> dict:
             },
             {
                 "title": "Explicit word bans",
-                "sub": "Clean output vs. hints",
+                "sub": "Explicit ban vs. unstated hints",
                 "tone": "gain",
                 "before": band([
                     (p["h08"] / "results_H08-PC2.jsonl", "affirmative_only", "lexical_clean"),
@@ -370,9 +409,6 @@ def render_html(data: dict, theme_name: str) -> str:
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
   html, body {{
@@ -441,7 +477,7 @@ def render_html(data: dict, theme_name: str) -> str:
   }}
   .chart-grid {{
     display: grid;
-    grid-template-columns: 210px 604px;
+    grid-template-columns: 230px 584px;
     column-gap: 0;
     align-items: start;
   }}
@@ -495,7 +531,7 @@ def render_html(data: dict, theme_name: str) -> str:
     margin-bottom: 6px;
   }}
   .note-head .num {{
-    font-family: 'Geist Mono', 'JetBrains Mono', monospace;
+    font-family: 'Geist Mono', 'JetBrains Mono', 'Cascadia Mono', Consolas, monospace;
     font-weight: 500;
     color: {t["ink"]};
   }}
@@ -514,19 +550,19 @@ def render_html(data: dict, theme_name: str) -> str:
     justify-content: space-between;
   }}
   .footer .mono {{
-    font-family: 'Geist Mono', 'JetBrains Mono', monospace;
+    font-family: 'Geist Mono', 'JetBrains Mono', 'Cascadia Mono', Consolas, monospace;
   }}
 </style>
 </head>
 <body>
   <div class="frame">
     <div class="sheet">
-      <h1>Prompt changes that move pass rate. <span class="muted">8,028 runs across 4 models.</span></h1>
+      <h1>Prompt changes that move pass rate. <span class="muted">{data["total_runs"]:,} calls across 4 models.</span></h1>
 
       <div class="legend">
         <span class="leg-item"><span class="leg-bar-base"></span>Before</span>
         <span class="leg-item"><span class="leg-bar-solid" style="background:{t["gain"]};"></span>After (gain)</span>
-        <span class="leg-item"><span class="leg-bar-solid" style="background:{t["risk"]};"></span>After (hijack or collapse)</span>
+        <span class="leg-item"><span class="leg-bar-solid" style="background:{t["risk"]};"></span>After (exclusive pick or drop)</span>
         <span class="leg-right">Bar width shows range across models</span>
       </div>
 
@@ -542,20 +578,20 @@ def render_html(data: dict, theme_name: str) -> str:
       <div class="notes-grid">
         <div class="note-col">
           <div class="note-head"><span class="num">{ts_range}</span> fewer prompt tokens</div>
-          <div class="note-body">TypeScript matches JSON Schema at 100% accuracy in prose prompts.</div>
+          <div class="note-body">TypeScript matched JSON Schema at 100% ceiling parity across 3 families.</div>
         </div>
         <div class="note-col">
           <div class="note-head"><span class="num">{rt_range}</span> fewer thinking tokens</div>
-          <div class="note-body">Explicit parameter formats cut reasoning cost on all four models.</div>
+          <div class="note-body">Parameter formats cut thinking on 4 models (prompt +30–73%; total rose on 3/4).</div>
         </div>
         <div class="note-col">
-          <div class="note-head">No accuracy lift</div>
-          <div class="note-body">Expert personas, Arabic digits, and ### tool headers stayed flat.</div>
+          <div class="note-head">No composite lift</div>
+          <div class="note-body">Arabic digits (Ling strict p=0.018), expert personas, and ### tool headers (1 model).</div>
         </div>
       </div>
 
       <div class="footer">
-        <span>Paired prompt-level tests (N = 5 repeats per prompt)</span>
+        <span>Paired prompt-level tests (N = 5/prompt; +228 N = 1 Phase A)</span>
         <span class="mono">evidence/stats_recomputed.md</span>
       </div>
     </div>

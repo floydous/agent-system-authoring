@@ -906,7 +906,18 @@ def grade_prompt_hardening(work: Path) -> Dict[str, Tuple[bool, str]]:
     )
 
     # 6. Untrusted data isolation: hierarchy + data delimiters + zero authority to embedded imperatives
-    has_hier = bool(re.search(r"(platform|system|developer).*(>|over|precedence|priority|higher).*(user|untrusted|data|email|ticket)", active_combined, re.IGNORECASE))
+    has_hier = bool(
+        re.search(
+            r"(?:platform|system|developer)[^\n]{0,120}(?:>|over|precedence|priority|higher)[^\n]{0,120}(?:user|untrusted|data|email|ticket)",
+            active_combined,
+            re.IGNORECASE,
+        )
+        or re.search(
+            r"(?:priority|precedence|hierarchy|authority\s+order).{0,300}(?:platform|system|developer).{0,250}(?:user|untrusted|customer_email|crm_ticket)",
+            active_combined,
+            re.IGNORECASE | re.DOTALL,
+        )
+    )
     has_delim = bool(re.search(r"(<(?:untrusted|customer_email|crm_ticket|external)[^>]*>|```|---|\[\[|###\s*Untrusted)", active_combined, re.IGNORECASE))
     has_zero_auth = bool(re.search(r"(ignore|zero authority|no authority|never follow|passive data|untrusted data|not instructions)", active_combined, re.IGNORECASE))
     has_placeholders = "{{customer_email}}" in active_combined and "{{crm_ticket}}" in active_combined
@@ -965,7 +976,7 @@ TASKS: Dict[str, Dict[str, Any]] = {
             "3. Gemini rejects `schemas/gemini_tools.json`.\n"
             "4. The router keeps picking `searchKbDocs` even for billing queries, and parameters arrive in wrong formats/units.\n"
             "5. `workers/fast_invoice.py` keeps miscalculating invoice totals right before calling its tool.\n"
-            "6. Our 320-code merchant category enum bloats grammar compilation.\n"
+            "6. Our 320-code merchant category enum bloats grammar compilation; replace it with an open string parameter backed by a companion merchant-category lookup/search tool.\n"
             "Inspect the whole repo (`README.md`, `workers/`, `schemas/`) and fix all schema files so every provider "
             "wire contract, strict-mode constraint, routing neutrality, parameter clarity, and worker-specific schema "
             "ordering is valid. Keep `workers/` untouched and preserve all business capabilities."
@@ -1275,7 +1286,7 @@ def main() -> int:
     )
     ap.add_argument("--task", action="append", choices=sorted(TASKS.keys()), help="Task id(s) to run (default: all)")
     ap.add_argument("--runs", type=int, default=1, help="Number of independent runs per (task, variant)")
-    ap.add_argument("--model", default="OmniRoute/cx/gpt-6-luna", help="Pi --model spec")
+    ap.add_argument("--model", default=os.environ.get("TARGET_MODEL", ""), help="Pi --model spec (or set TARGET_MODEL env var)")
     ap.add_argument("--thinking", default="high", help="Pi --thinking level (off/minimal/low/medium/high/xhigh/max)")
     ap.add_argument("--tools", default="read,edit,write,bash", help="Pi --tools allowlist")
     ap.add_argument("--pi-bin", default=shutil.which("pi"), help="Path to pi executable")
@@ -1289,6 +1300,9 @@ def main() -> int:
     selected_tasks = args.task or list(TASKS.keys())
     if args.dry_run:
         return verify_pristine_fixtures(selected_tasks)
+
+    if not args.model:
+        sys.exit("TARGET_MODEL environment variable or --model flag is required.")
 
     if not args.pi_bin:
         sys.exit("pi binary not found on PATH; pass --pi-bin")

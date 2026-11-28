@@ -21,10 +21,10 @@
 
 <table align="center">
   <tr>
-    <td align="center" width="190"><h3>8,028</h3><b>Benchmark runs</b><br><sub>4 model families, 3 architectures</sub></td>
-    <td align="center" width="190"><h3>28</h3><b>Tagged rules</b><br><sub>every rule linked to its proof</sub></td>
+    <td align="center" width="190"><h3>8,028</h3><b>Benchmark calls</b><br><sub>7,800 at N=5 + 228 Phase A</sub></td>
+    <td align="center" width="190"><h3>28</h3><b>Tagged rules</b><br><sub>every rule tagged with its evidence tier</sub></td>
     <td align="center" width="190"><h3>3</h3><b>API providers</b><br><sub>OpenAI, Anthropic, Gemini</sub></td>
-    <td align="center" width="190"><h3>115.5 KB</h3><b>Skill install</b><br><sub>55-line SKILL.md, 11 files</sub></td>
+    <td align="center" width="190"><h3>119.3 KB</h3><b>Skill install</b><br><sub>56-line SKILL.md, 11 files</sub></td>
   </tr>
 </table>
 
@@ -95,22 +95,22 @@ This skill gives coding agents a short, tested playbook for authoring system pro
 
 ## What held up
 
-We ran `8,028` benchmark calls across four model families (`GPT 6 Luna`, `Particle-1`, `Nemotron 3.5 Lightning` Mamba-2 SSM, and `Ling 3.2 Flash` Hybrid-Linear MoE) plus `490` skill-eval calls. Repeated runs (`N = 5` per prompt) are averaged at the prompt level before statistical testing to avoid inflated sample counts.
+We ran `8,028` benchmark calls across four gateway model families (`7,800` calls in Phases B–G & `H-08` at `N = 5` repeats across `6–16` prompts per suite, plus `228` `N = 1` Phase A screening calls) alongside `490` Eval Suite v4 calls and `55` isolated Pi real-agent sessions. Repeated runs (`N = 5` per prompt) are averaged into prompt-level means before paired *t* or exact sign testing to avoid pseudoreplication.
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="evidence/charts/what_held_up_dark.png">
     <source media="(prefers-color-scheme: light)" srcset="evidence/charts/what_held_up_light.png">
-    <img alt="Benchmark summary chart comparing baseline and intervention pass rates, prompt token savings, and thinking token savings across 4 model families and 3 architectures" src="evidence/charts/what_held_up_light.png" width="100%">
+    <img alt="Benchmark summary chart comparing baseline and intervention pass rates, prompt token savings, and thinking token savings across 4 model families" src="evidence/charts/what_held_up_light.png" width="100%">
   </picture>
 </p>
 
-**Key rules to apply:** spell out exact parameter formats and units (cuts thinking tokens across all 4 families too), keep tool descriptions factual and neutral, prune bloated tool catalogs, name banned words explicitly, break large rule sets into compact phases, put `rationale` first only when pre-output thinking is off, use TypeScript interfaces inside prose prompts (keep JSON Schema for tool APIs), and drop CoT directives, superfluous few-shot examples, honorary expert personas, and `###` tool headers.
+**Key rules to apply:** spell out exact parameter formats and units (cuts thinking tokens across all 4 families while raising prompt tokens `+30–73%` and total tokens on `3/4` families), keep tool descriptions factual and neutral, prune bloated tool catalogs, name banned words explicitly (tested against unstated affirmative hints; `paired` vs `bare` lexical `p >= 0.33`), keep active concurrent rule counts compact (phase-splitting is derived from `PE-1` density degradation, not directly ablated as a `PE-1` arm), put `rationale` first only when pre-output thinking is off, use TypeScript interfaces inside prose prompts (`100%` ceiling parity across 3 families; keep JSON Schema for tool APIs), and drop CoT directives, superfluous few-shot examples, honorary expert personas (`1` model), and `###` tool headers (`1` model).
 
-**Skill evals:** `1.000` precision and recall on the 9-skill trigger suite (`160` calls), `50/50` solo-skill precision, and `39/40` vs `38/40` on objective authoring probes ([evals_results.md](evidence/evals_results.md)). On real multi-turn coding-agent tasks (`55` isolated `pi v1.6.0` sessions on `GPT 6 Luna`, deterministic workspace grading), the skill lifted multi-provider tool repair **`42% → 78%`** (`p = 0.0079`, `-33%` turns, `-25%` tokens, `-34%` wall time) and skill-package repair **`58% → 76%`** (`p = 0.0317`), with an A/B-verified Step-3 fix lifting strict `10/10` pass rate **`0/5 → 5/5`** (`p = 0.0079`, `-11%` tokens) and post-slim verification (`115.5 KB`) holding `96%` (`4/5` strict, `p = 1.00`) and `90%` (`p = 0.72`) while trimming tokens across all 3 tasks.
+**Skill evals:** On Eval Suite v4 (`2026-11-23`, pre-slim `v2.0.0`, `GPT 6 Luna`, [evals_results.md](evidence/evals_results.md)), triggering reached `1.000` precision and recall (`160` calls; `47/50` clean `'none'` on overlapping negatives) and `50/50` solo-skill precision; objective authoring probes scored `39/40` vs `38/40` (`0.975` vs `0.950`, `p = 0.6845`), and the dual-order blinded judge was a statistical tie (`0.846` baseline vs `0.836` with skill, `p = 0.6529`; swap-consistent `10` skill / `14` baseline / `26` flip-or-tie). On real multi-turn coding-agent tasks (`55` isolated `pi v1.6.0` sessions on `GPT 6 Luna`, `P = 1` fixed repo fixture per task × `N = 5` runs, deterministic workspace grading), the initial skill lifted `multi_provider_tools` **`42% → 78%`** (`p = 0.0079`, `-33%` turns, `-25%` tokens, `-34%` wall time) and `broken_skill_repair` **`58% → 76%`** (`p = 0.0317`), while `prompt_hardening_refactor` stayed flat (`88% → 86%`, `p = 1.00`, `38.3k → 81.5k` tokens). An A/B-verified Step-3 fix lifted `broken_skill_repair` strict `10/10` pass rate **`0/5 → 5/5`** (`p = 0.0079`, `-11%` tokens). Post-slim verification (`15` sessions on the trimmed package) held `broken_skill_repair` at `96%` (`4/5` strict, `p = 1.00` vs prior) and `prompt_hardening_refactor` at `90%` (`p = 0.72`), while `multi_provider_tools` shifted to `68%` (`[8, 6, 9, 4, 7]`, `p = 0.46` vs prior; `p = 0.0476` nominal vs baseline) and mean tokens fell across all 3 tasks.
 
 > [!NOTE]
-> Live runs tested four model families across three architectures: `GPT 6 Luna`, `Particle-1` (DeepSeek V4.1 Flash lineage), `Nemotron 3.5 Lightning` (`30B-A3B` Mamba-2 SSM hybrid), and `Ling 3.2 Flash` (`~560B-A25B` Hybrid-Linear KDA+MLA MoE). Closed frontier models (`Claude Opus 5.5`, `Claude Fable 5.2`, `Gemini 4 Hydrogen`, `GPT 6.2 Astra`) remain open in [unverified_hypotheses.md](evidence/unverified_hypotheses.md).
+> Live runs tested four gateway model families (`GPT 6 Luna` [`cx/gpt-6-luna`], `Particle-1` [`openrouter/particle-ai/particle-1:free`], `Nemotron 3.5 Lightning` [`openrouter/nvidia/nemotron-3.5-lightning:free`], and `Ling 3.2 Flash` [`openrouter/inclusionai/ling-3.2-flash:free`]; see [source_checks.md](evidence/source_checks.md) for slug vs. router-metadata provenance). Closed frontier models (`Claude Opus 5.5`, `Claude Fable 5.2`, `Gemini 4 Hydrogen`, `GPT 6.2 Astra`) remain open in [unverified_hypotheses.md](evidence/unverified_hypotheses.md).
 
 <details>
 <summary><strong>Evidence tiers (T1 to T5)</strong></summary>
@@ -133,17 +133,17 @@ Every rule in [evidence_ledger.md](evidence/evidence_ledger.md) carries one prim
 
 | Suite | Model | Calls | Focus | Full report |
 | :--- | :--- | :---: | :--- | :--- |
-| **Phase A** | `GPT 6 Luna` | 228 | Initial screening across 7 prompt and schema suites | [stats_recomputed.md](evidence/stats_recomputed.md) |
+| **Phase A** | `GPT 6 Luna` | 228 | Initial screening (`N = 1`) across 7 prompt and schema suites | [stats_recomputed.md](evidence/stats_recomputed.md) |
 | **Phase B** | `GPT 6 Luna` | 480 | Equalized delimiters, personas, `rationale` ordering (`N = 5`) | [stats_recomputed.md](evidence/stats_recomputed.md) |
 | **Phase C** | `GPT 6 Luna` | 480 | Counterbalanced tool gaming (`PC-1`) and explicit bans (`PC-2`) | [stats_recomputed.md](evidence/stats_recomputed.md) |
 | **Phase D** | `GPT 6 Luna` | 1,030 | Param descriptions, verbosity ceiling, headers, digits, TS vs JSON | [stats_recomputed.md](evidence/stats_recomputed.md) |
 | **Phase E** | `GPT 6 Luna` (`high`) | 880 | Rule density (`5` to `50`), long-context reminders, hard math personas | [stats_recomputed.md](evidence/stats_recomputed.md) |
-| **`H-08` Replication** | `Particle-1` (DeepSeek V4.1 Flash) | 950 | Cross-model replication of `PC-1`, `PC-2`, `PD-1`, `PD-4`, `PD-5` | [stats_recomputed.md](evidence/stats_recomputed.md) |
-| **Phase F Cross-Arch (Nemotron)** | `Nemotron 3.5 Lightning` (Mamba-2 SSM) | 1,190 | Cross-architecture replication of `PB-6`, `PC-1`, `PC-2`, `PD-1`, `PD-4`, `PE-2` | [stats_recomputed.md](evidence/stats_recomputed.md) |
-| **Phase F Cross-Arch (Ling)** | `Ling 3.2 Flash` (Hybrid-Linear MoE) | 1,510 | Cross-architecture replication of `PB-6`, `PE-1`, `PC-1`, `PC-2`, `PD-1`, `PD-4`, `PD-5` | [stats_recomputed.md](evidence/stats_recomputed.md) |
+| **`H-08` Replication** | `Particle-1` | 950 | Cross-model replication of `PC-1`, `PC-2`, `PD-1`, `PD-4`, `PD-5` | [stats_recomputed.md](evidence/stats_recomputed.md) |
+| **Phase F Cross-Arch (Nemotron)** | `Nemotron 3.5 Lightning` | 1,190 | Cross-family replication of `PB-6`, `PC-1`, `PC-2`, `PD-1`, `PD-4`, `PE-2` | [stats_recomputed.md](evidence/stats_recomputed.md) |
+| **Phase F Cross-Arch (Ling)** | `Ling 3.2 Flash` | 1,510 | Cross-family replication of `PB-6`, `PE-1`, `PC-1`, `PC-2`, `PD-1`, `PD-4`, `PD-5` | [stats_recomputed.md](evidence/stats_recomputed.md) |
 | **Phase G Stress & Untouched Rules** | `GPT 6 Luna` | 1,280 | Tool catalog scaling (`PG-1`), CoT on reasoning (`PG-2`), conflicting few-shots (`PG-3`), 16-turn memory (`PG-4`), 67k context (`PG-5`) | [stats_recomputed.md](evidence/stats_recomputed.md) |
-| **Eval Suite v4** | `GPT 6 Luna` | 490 | 9-skill triggering, solo precision, objective probes, dual-order judge | [evals_results.md](evidence/evals_results.md) |
-| **Pi Real-Agent Evals** | `GPT 6 Luna` (`pi v1.6.0`) | 55 sessions | Multi-turn broken-repo repair (`N = 5` × 3 repos), paired A/B Step-3 fix, post-slim verification | [stats_recomputed.md](evidence/stats_recomputed.md) |
+| **Eval Suite v4** | `GPT 6 Luna` | 490 | 9-skill triggering, solo precision, objective probes, dual-order judge (`2026-11-23`) | [evals_results.md](evidence/evals_results.md) |
+| **Pi Real-Agent Evals** | `GPT 6 Luna` (`pi v1.6.0`) | 55 sessions | Multi-turn broken-repo repair (`N = 5` × 3 repos, `P = 1`/task), paired A/B Step-3 fix, post-slim verification | [stats_recomputed.md](evidence/stats_recomputed.md) |
 
 All `7,800` Phase B to G and `H-08` runs, all `490` Eval v4 runs, and all `55` real-agent Pi sessions completed with `0` errors. Narrative synthesis lives in [empirical_results.md](evidence/empirical_results.md).
 
@@ -151,7 +151,7 @@ All `7,800` Phase B to G and `H-08` runs, all `490` Eval v4 runs, and all `55` r
 
 ## Verify locally
 
-All packaging checks, unit tests, and statistical tables reproduce offline using Python's standard library alone (no API keys or extra packages required):
+All packaging checks, unit tests, and statistical tables reproduce offline using Python's standard library alone (no API keys or extra packages required). `recompute_stats.py` and `run_evals.py --rescore-only` verify report aggregation and stored-trace invariants (including trigger JSON and offline `comp_09` rescoring), while `unittest` deterministically re-evaluates raw Phase B–G & `H-08` model responses against the harness evaluators:
 
 ```bash
 python -B skills/agent-system-authoring/scripts/verify_skill.py skills/agent-system-authoring

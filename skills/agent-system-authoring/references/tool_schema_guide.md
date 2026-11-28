@@ -90,7 +90,7 @@ Never mix top-level `"name"`/`"strict"` directly alongside `"$schema"`/`"propert
   "input_schema": {
     "type": "object",
     "properties": {
-      "account_id": { "type": "string", "pattern": "^ACC-[0-9]{6}$", "description": "Account ID (8-24 chars)." },
+      "account_id": { "type": "string", "pattern": "^ACC-[0-9]{6}$", "description": "Account ID formatted as ACC- followed by 6 digits (e.g., ACC-004219)." },
       "credit_cents": { "type": "integer", "description": "Integer cents between 100 and 500000 inclusive." },
       "memo_note": { "type": "string", "description": "Optional note (max 200 chars)." }
     },

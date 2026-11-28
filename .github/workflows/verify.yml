@@ -34,7 +34,7 @@ jobs:
       - name: Verify skill package in --generic mode
         run: python -B skills/agent-system-authoring/scripts/verify_skill.py --generic skills/agent-system-authoring
 
-      - name: Verify offline statistical recomputation (Phases A–F & H-08)
+      - name: Verify offline statistical recomputation (Phases A–G, H-08 & Pi)
         run: python -B evidence/recompute_stats.py --check
 
       - name: Verify Eval Suite v4 report reproducibility

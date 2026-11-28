@@ -19,10 +19,10 @@ prompt-level paired inference, deterministic programmatic evaluators):
     demonstrations against a 5-rule system prompt (measuring rule compliance,
     strict_all, and conflicting-pattern mimic_rate -> 240 calls/model)
   - PG-4 (C-02 / R-SYS-04): Multi-turn prospective memory under concurrent
-    reasoning load (conditional 'FINAL AUDIT:' trigger in system prompt, 8
-    intervening routine turns with zero rule violations, Turn 9 audit + math
+    reasoning load (conditional 'FINAL AUDIT:' trigger in system prompt, 16
+    intervening routine turns with zero rule violations, Turn 17 audit + math
     calculation, system_only vs trailing_reminder -> 160 calls/model)
-  - PG-5 (C-04 / R-SYS-02 & R-TOOL-12): True long-context (~48k-token) two-hop
+  - PG-5 (C-04 / R-SYS-02 & R-TOOL-12): True long-context (~67.3k-token) two-hop
     needle recall + embedded prompt-injection override at doc_start, doc_middle,
     doc_end, and doc_middle_refreshed (terminal re-anchoring -> 320 calls/model)
 
@@ -32,7 +32,7 @@ Configured solely via environment variables:
   - TARGET_MODEL
 
 Writes sanitized JSONL records (stripped of auth headers & gateway URLs) to:
-  - evidence/raw_phase_g_<prefix>/results_<PREFIX>-<SUITE>.jsonl
+  - evidence/raw/phase_g_<prefix>/results_<PREFIX>-<SUITE>.jsonl (.jsonl.gz for PG5)
 """
 
 from __future__ import annotations
@@ -41,6 +41,7 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import gzip
 import json
 import os
 from pathlib import Path
@@ -1273,7 +1274,13 @@ def run_suite(
             "metrics": metrics,
         }
 
-    with out_path.open("w", encoding="utf-8", newline="\n") as fh:
+    if suite_key == "PG5" and not preflight:
+        out_path = out_dir / f"results_{hyp_id}.jsonl.gz"
+        fh_ctx = gzip.open(out_path, "wt", encoding="utf-8", newline="\n")
+    else:
+        fh_ctx = out_path.open("w", encoding="utf-8", newline="\n")
+
+    with fh_ctx as fh:
         with ThreadPoolExecutor(max_workers=cfg.concurrency) as pool:
             futs = [pool.submit(worker, it) for it in items]
             for fut in as_completed(futs):
