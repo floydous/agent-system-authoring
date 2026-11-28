@@ -530,7 +530,11 @@ class TestPhaseABCAndOfflineVerification(unittest.TestCase):
 
     def test_run_evals_offline_verify_stored_trace_records(self) -> None:
         out_jsonl = REPO_ROOT / "evidence" / "raw" / "evals_v4" / "results_evals_v4.jsonl"
-        records = [json.loads(ln) for ln in out_jsonl.read_text(encoding="utf-8").splitlines() if ln.strip()]
+        raw = out_jsonl.read_bytes()
+        self.assertNotIn(b"\r\n", raw)
+        txt = raw.decode("utf-8")
+        self.assertNotIn("10.0.0.", txt)
+        records = [json.loads(ln) for ln in txt.splitlines() if ln.strip()]
         audit = reval.verify_stored_trace_records(records)
         self.assertEqual(audit["mismatches"], [])
         self.assertEqual(audit["triggers_verified"], 210)
@@ -538,6 +542,7 @@ class TestPhaseABCAndOfflineVerification(unittest.TestCase):
         self.assertEqual(audit["comp09_rescored"], 10)
         self.assertEqual(audit["probes_checked"], 80)
         self.assertEqual(audit["judges_checked"], 100)
+        self.assertEqual(audit["judges_missing_raw_response"], 0)
 
         # Synthetic corruption must be detected
         bad_records = [json.loads(json.dumps(records[0]))]
