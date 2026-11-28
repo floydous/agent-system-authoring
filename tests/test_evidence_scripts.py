@@ -407,27 +407,34 @@ class TestPiAgentEvalIntegrity(unittest.TestCase):
         main_p = pi_dir / "results_pi_luna_n5.jsonl"
         ab_p = pi_dir / "results_pi_ab_step3_fix.jsonl"
         slim_p = pi_dir / "results_pi_slim_v2_n5.jsonl"
+        phase5_p = pi_dir / "results_pi_phase5_ab_n5.jsonl"
         main_recs = [json.loads(ln) for ln in main_p.read_text(encoding="utf-8").splitlines() if ln.strip()]
         ab_recs = [json.loads(ln) for ln in ab_p.read_text(encoding="utf-8").splitlines() if ln.strip()]
         slim_recs = [json.loads(ln) for ln in slim_p.read_text(encoding="utf-8").splitlines() if ln.strip()]
+        phase5_recs = [json.loads(ln) for ln in phase5_p.read_text(encoding="utf-8").splitlines() if ln.strip()]
         self.assertEqual(len(main_recs), 30)
         self.assertEqual(len(ab_recs), 10)
         self.assertEqual(len(slim_recs), 15)
+        self.assertEqual(len(phase5_recs), 30)
         home_path_re = re.compile(r"(?:[A-Za-z]:[\\/]+Users[\\/]+|/Users/|/home/)[^\s\"'\\/]+")
-        for p in (main_p, ab_p, slim_p):
+        for p in (main_p, ab_p, slim_p, phase5_p):
             raw = p.read_bytes()
             self.assertNotIn(b"\r\n", raw)
             txt = raw.decode("utf-8")
             self.assertIsNone(home_path_re.search(txt), msg=f"OS home path leak in {p.name}")
             self.assertNotIn("AppData", txt)
             self.assertNotIn("10.0.0.", txt)
-        for r in main_recs + ab_recs + slim_recs:
+        for r in main_recs + ab_recs + slim_recs + phase5_recs:
             self.assertIsNone(r["agent_error"])
             self.assertTrue(r["isolation_ok"])
             self.assertEqual(r["passed_checks"], sum(1 for v in r["checks"].values() if v["ok"]))
             self.assertEqual(r["strict_pass"], r["passed_checks"] == r["total_checks"])
         aft = [r for r in ab_recs if r["variant"] == "after"]
         self.assertEqual(sum(1 for r in aft if r["strict_pass"]), 5)
+        p5_skill = [r for r in phase5_recs if r["variant"] == "with_skill"]
+        self.assertEqual(len(p5_skill), 15)
+        self.assertEqual(sum(1 for r in p5_skill if r["skill_read"]), 15)
+        self.assertGreaterEqual(sum(1 for r in p5_skill if r["refs_read"]), 10)
 
     def test_prompt_hardening_multiline_hierarchy_grader(self) -> None:
         import pi_agent_eval as pe

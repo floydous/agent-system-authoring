@@ -148,9 +148,9 @@ Retrieved via live web extraction against `https://arxiv.org/abs/<id>` and web s
 
 Every live JSONL record in `evidence/raw/` (except legacy Phase C v1.1.0 records noted in `evidence/README.md`) records the exact gateway/router model slug used during execution. Architecture, lineage, and parameter-count descriptions cited in router catalogs are **gateway metadata**, not primary-source model-card snapshots retrieved in Sections 1–3:
 
-| Display Name Used in Reports | Exact Gateway / Router Slug in Traces | Trace Scope (`8,028` Benchmark + `490` Eval v4 + `55` Pi) | Provenance Note |
+| Display Name Used in Reports | Exact Gateway / Router Slug in Traces | Trace Scope (`8,028` Benchmark + `490` Eval v4 + `85` Pi) | Provenance Note |
 | :--- | :--- | :--- | :--- |
-| `GPT 6 Luna` | `cx/gpt-6-luna` | Phases A–E (`3,098`) + Phase G (`1,280`) + Eval v4 (`490`) + Pi (`55` sessions) | Model name `gpt-6-luna` also appears in retrieved OpenAI `reasoning.md` (Section 2.4). |
+| `GPT 6 Luna` | `cx/gpt-6-luna` | Phases A–E (`3,098`) + Phase G (`1,280`) + Eval v4 (`490`) + Pi (`85` sessions) | Model name `gpt-6-luna` also appears in retrieved OpenAI `reasoning.md` (Section 2.4). |
 | `Particle-1` | `openrouter/particle-ai/particle-1:free` | `H-08` replication (`950`) | Router slug verified directly in `raw/h08_particle1/results_H08-*.jsonl`; vendor/router lineage tag ("DeepSeek V4.1 Flash lineage") is unverified gateway metadata. |
 | `Nemotron 3.5 Lightning` | `openrouter/nvidia/nemotron-3.5-lightning:free` | Phase F Nemotron (`1,190`) | Router slug verified directly in `raw/phase_f_nemo/results_NEMO-*.jsonl`; architecture/size tag (`30B-A3B` Mamba-2 SSM hybrid) is unverified gateway/catalog metadata. |
 | `Ling 3.2 Flash` | `openrouter/inclusionai/ling-3.2-flash:free` | Phase F Ling (`1,510`) | Router slug verified directly in `raw/phase_f_ling/results_LING-*.jsonl`; architecture/size tag (`~560B-A25B` Hybrid-Linear KDA+MLA MoE) is unverified gateway/catalog metadata. |

@@ -17,7 +17,7 @@ This ledger indexes all 28 authoring rule IDs (`R-SYS-01`–`R-SYS-10`, `R-TOOL-
 ## Verification Metadata
 - **Audit & Source Verification Date**: 2026-11-27 (synced with [source_checks.md](source_checks.md))
 - **Current Frontier Models (Unvalidated by Cited Papers or Our Harness)**: Gemini 4 Hydrogen, Claude Fable 5.2, Claude Opus 5.5, GPT 6.2 Astra.
-- **Target Empirical Models**: `GPT 6 Luna` (`4,378` benchmark records + `490` Eval v4 + `55` Pi sessions), `Particle-1` (`950`), `Nemotron 3.5 Lightning` (`1,190`), and `Ling 3.2 Flash` (`1,510`) = **`8,028` total benchmark records** (`0` errors in Phases B–G, `H-08`, Eval v4, and Pi; router slugs documented in [source_checks.md](source_checks.md)).
+- **Target Empirical Models**: `GPT 6 Luna` (`4,378` benchmark records + `490` Eval v4 + `85` Pi sessions), `Particle-1` (`950`), `Nemotron 3.5 Lightning` (`1,190`), and `Ling 3.2 Flash` (`1,510`) = **`8,028` total benchmark records** (`0` errors in Phases B–G, `H-08`, Eval v4, and Pi; router slugs documented in [source_checks.md](source_checks.md)).
 - **Registered Rule IDs**: 28 (`R-SYS-01`–`R-SYS-10`, `R-TOOL-01`–`R-TOOL-12` including `R-TOOL-09` merged into `R-TOOL-03`, `R-SKILL-01`–`R-SKILL-06`).
 
 ---

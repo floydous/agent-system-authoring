@@ -465,6 +465,7 @@ def main() -> int:
     pi_main_path = raw_pi / "results_pi_luna_n5.jsonl"
     pi_ab_path = raw_pi / "results_pi_ab_step3_fix.jsonl"
     pi_slim_path = raw_pi / "results_pi_slim_v2_n5.jsonl"
+    pi_phase5_path = raw_pi / "results_pi_phase5_ab_n5.jsonl"
     pi_main_recs = [
         json.loads(ln) for ln in pi_main_path.read_text(encoding="utf-8").splitlines() if ln.strip()
     ] if pi_main_path.exists() else []
@@ -474,7 +475,10 @@ def main() -> int:
     pi_slim_recs = [
         json.loads(ln) for ln in pi_slim_path.read_text(encoding="utf-8").splitlines() if ln.strip()
     ] if pi_slim_path.exists() else []
-    pi_all_recs = pi_main_recs + pi_ab_recs + pi_slim_recs
+    pi_phase5_recs = [
+        json.loads(ln) for ln in pi_phase5_path.read_text(encoding="utf-8").splitlines() if ln.strip()
+    ] if pi_phase5_path.exists() else []
+    pi_all_recs = pi_main_recs + pi_ab_recs + pi_slim_recs + pi_phase5_recs
     pi_total = len(pi_all_recs)
     pi_errors = sum(1 for r in pi_all_recs if r.get("agent_error") is not None)
     pi_iso_ok = sum(1 for r in pi_all_recs if r.get("isolation_ok"))
@@ -1435,6 +1439,35 @@ def main() -> int:
                     f"{pm:.1f}% (`{[r['passed_checks'] for r in prev]}`) | "
                     f"{cm:.1f}% (`{[r['passed_checks'] for r in cur]}`) | "
                     f"{fmt_p(p_prev)} | {fmt_p(p_base)} | {ptok:,.0f} -> {ctok:,.0f} |"
+                )
+
+        if pi_phase5_recs:
+            lines.extend([
+                "",
+                "### 10.4 Post-Remediation Paired A/B Evaluation (`119.3 KB` Package + Progressive-Disclosure Cues + Fixed Graders, `N = 5`, `30` Sessions)",
+                "",
+                "| Task | Baseline (`-ns`) | With Skill (`--skill`) | Delta | Strict `10/10` (B -> S) | Matched `refs_read` | Exact Perm p (Checks / Strict) | Tokens (B -> S) | Wall Secs (B -> S) |",
+                "| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |",
+            ])
+            for tid in ("multi_provider_tools", "broken_skill_repair", "prompt_hardening_refactor"):
+                b = [r for r in pi_phase5_recs if r["task_id"] == tid and r["variant"] == "baseline"]
+                s = [r for r in pi_phase5_recs if r["task_id"] == tid and r["variant"] == "with_skill"]
+                if not b or not s:
+                    continue
+                bm = statistics.mean(r["check_score"] for r in b) * 100
+                sm = statistics.mean(r["check_score"] for r in s) * 100
+                bstr = sum(1 for r in b if r["strict_pass"])
+                sstr = sum(1 for r in s if r["strict_pass"])
+                refs_rd = sum(1 for r in s if r.get("refs_read"))
+                p_chk = exact_perm_p([r["check_score"] for r in b], [r["check_score"] for r in s])
+                p_str = exact_perm_p([1.0 if r["strict_pass"] else 0.0 for r in b], [1.0 if r["strict_pass"] else 0.0 for r in s])
+                btok, stok = statistics.mean(r["total_tokens"] for r in b), statistics.mean(r["total_tokens"] for r in s)
+                bs, ss = statistics.mean(r["wall_seconds"] for r in b), statistics.mean(r["wall_seconds"] for r in s)
+                lines.append(
+                    f"| `{tid}` | {bm:.1f}% (`{[r['passed_checks'] for r in b]}`) | "
+                    f"**{sm:.1f}%** (`{[r['passed_checks'] for r in s]}`) | {sm - bm:+.1f}pp | "
+                    f"{bstr}/{len(b)} -> **{sstr}/{len(s)}** | {refs_rd}/{len(s)} | "
+                    f"{fmt_p(p_chk)} / {fmt_p(p_str)} | {btok:,.0f} -> {stok:,.0f} | {bs:.1f}s -> {ss:.1f}s |"
                 )
 
     lines.append("")
